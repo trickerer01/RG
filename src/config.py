@@ -32,6 +32,7 @@ class BaseConfig:
         self.dest_base: str | None = None
         self.proxy: str | None = None
         self.download_without_proxy: bool | None = None
+        self.html_without_proxy: bool | None = None
         self.session_id: str | None = None
         self.min_rating: int | None = None
         self.min_score: int | None = None
@@ -102,6 +103,7 @@ class BaseConfig:
         self.dest_base = params.path
         self.proxy = params.proxy
         self.download_without_proxy = params.download_without_proxy
+        self.html_without_proxy = params.html_without_proxy
         # session_id only exists in RV, RG and RC
         self.session_id = getattr(params, 'session_id', self.session_id)
         self.min_rating = params.minimum_rating

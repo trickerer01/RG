@@ -93,8 +93,8 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
         return DownloadResult.FAIL_NOT_FOUND
 
     vi.set_state(VideoInfo.State.SCANNING)
-    ckwargs = dict(noproxy=not Config.proxy or Config.download_without_proxy)  # TODO
-    a_html = await fetch_html(f'{SITE_AJAX_REQUEST_VIDEO % vi.id}?popup_id={2 + vi.id % 10:d}', **ckwargs)
+    hkwargs = dict(noproxy=not Config.proxy or Config.html_without_proxy)
+    a_html = await fetch_html(f'{SITE_AJAX_REQUEST_VIDEO % vi.id}?popup_id={2 + vi.id % 10:d}', **hkwargs)
     if a_html is None:
         Log.error(f'Error: unable to retreive html for {sname}! Aborted!')
         return DownloadResult.FAIL_SKIPPED if Config.aborted else DownloadResult.FAIL_RETRIES
@@ -232,7 +232,7 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
             return DownloadResult.FAIL_RETRIES
         tries += 1
         Log.debug(f'No download section for {sname}, retry #{tries:d}...')
-        a_html = await fetch_html(f'{SITE_AJAX_REQUEST_VIDEO % vi.id}?popup_id={2 + tries + vi.id % 10:d}', **ckwargs)
+        a_html = await fetch_html(f'{SITE_AJAX_REQUEST_VIDEO % vi.id}?popup_id={2 + tries + vi.id % 10:d}', **hkwargs)
     links = ddiv.parent.find_all('a', class_='tag_item')
     qualities = list()
     for lin in links:
