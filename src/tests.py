@@ -108,8 +108,8 @@ class CmdTests(TestCase):
         c1 = BaseConfig()
         c1.read(parsed1, True)
         self.assertTrue(c1.get_maxid)
-        parsed2 = prepare_arglist(['-start', '2', '-pages', '1', '-uploader', '1234', '(2d~vr)', '--skip-empty-lists', '-script',
-                                   'a: 2d; b: 3d; c: a2 -2d; d: * -utp always', '-naming', 'prefix|quality', '-log', 'warn'], True)
+        parsed2 = prepare_arglist(['-start', '2', '-pages', '1', '-uploader', '1234', '(2d~abs)', '--skip-empty-lists', '-script',
+                                   'a: 2d; b: 3d; c: ai -2d; d: * -utp always', '-naming', 'prefix|quality', '-log', 'warn'], True)
         c2 = BaseConfig()
         c2.read(parsed2, True)
         self.assertEqual(17, c2.naming_flags)
@@ -121,11 +121,11 @@ class CmdTests(TestCase):
         self.assertEqual(SEARCH_RULE_DEFAULT, c2.search_rule_art)
         self.assertIsNone(c2.use_id_sequence)
         self.assertTrue(c2.skip_empty_lists)
-        parsed3 = prepare_arglist(['-playlist_name', 'commodified', '-start', '3', '-pages', '2', '-quality', '480p', '-dnoempty',
+        parsed3 = prepare_arglist(['-playlist_name', 'goods', '-start', '3', '-pages', '2', '-quality', '480p', '-dnoempty',
                                    '-minscore', '12', '-continue', '-unfinish', '-tdump', '-ddump', '-cdump', '-sdump'], True)
         c3 = BaseConfig()
         c3.read(parsed3, True)
-        self.assertEqual('commodified', c3.playlist_name)
+        self.assertEqual('goods', c3.playlist_name)
         self.assertEqual(3, c3.start)
         self.assertEqual(4, c3.end)
         self.assertEqual(QUALITIES[3], c3.quality)
@@ -157,15 +157,15 @@ class CmdTests(TestCase):
         self.assertTrue(c4.save_descriptions)
         self.assertTrue(c4.save_comments)
         self.assertTrue(c4.save_screenshots)
-        parsed5 = prepare_arglist(['-search_tag', '6*,5????', '-search_rule_tag', 'any',
-                                   '-search_art', '*nan', '-search_rule_art', 'any',
-                                   '-search_cat', 'ali??_*', '-search_rule_cat', 'any',
+        parsed5 = prepare_arglist(['-search_tag', '3*,2?', '-search_rule_tag', 'any',
+                                   '-search_art', 'dark*', '-search_rule_art', 'any',
+                                   '-search_cat', 'kling_ai*', '-search_rule_cat', 'any',
                                    '-start', '3', '-pages', '2', '-quality', '720p'], True)
         c5 = BaseConfig()
         c5.read(parsed5, True)
-        self.assertEqual('164,3966,5157,5261,5570,5934', c5.search_tags)
-        self.assertEqual('22565,27156,8822', c5.search_arts)
-        self.assertEqual('1433,1970,345,57,73', c5.search_cats)
+        self.assertEqual('101,55', c5.search_tags)
+        self.assertEqual('109,75,91', c5.search_arts)
+        self.assertEqual('23,32,39', c5.search_cats)
         self.assertEqual('any', c5.search_rule_tag)
         self.assertEqual('any', c5.search_rule_art)
         self.assertEqual('any', c5.search_rule_cat)
@@ -185,9 +185,9 @@ class CmdTests(TestCase):
         self.assertTrue(c1.use_id_sequence)
         self.assertEqual(0, len(c1.extra_tags))
         self.assertEqual(2, len(c1.id_sequence))
-        parsed2 = prepare_arglist(['-start', '1000', '-end', '999', '(a2~4k)', '(2d~vr)', '-dmode', 'touch', '--store-continue-cmdfile',
+        parsed2 = prepare_arglist(['-start', '1000', '-end', '999', '(ai~abs)', '(2d~vhs)', '-dmode', 'touch', '--store-continue-cmdfile',
                                    '-lookahead', '100', '-proxynodown', '-proxy', 'socks4://u1:p2@9.123.15.67:3128',
-                                   '-script', 'a: 2d; b: 3d -duration 10-200; c: a2 -2d -duration 0-9; d: * -utp always',
+                                   '-script', 'a: 2d; b: 3d -duration 10-200; c: ai -2d -duration 0-9; d: * -utp always',
                                    '-naming', '0x8', '-log', 'trace'], False)
         c2 = BaseConfig()
         c2.read(parsed2, False)
@@ -227,7 +227,7 @@ class DownloadTests(TestCase):
         set_up_test()
         tdir = TemporaryDirectory(prefix=f'{APP_NAME}_{self._testMethodName}_')
         tempdir = normalize_path(tdir.name)
-        tempfile_id = '3146165'
+        tempfile_id = '87'
         tempfile_ext = 'mp4'
         tempfile_fullpath = f'{tempdir}{tempfile_id}.{tempfile_ext}'
         arglist1 = ['-path', tempdir, '-start', tempfile_id, '-dmode', 'touch', '-naming', 'none', '-quality', '360p', '-log', 'trace']
@@ -244,11 +244,11 @@ class DownloadTests(TestCase):
         set_up_test()
         tdir = TemporaryDirectory(prefix=f'{APP_NAME}_{self._testMethodName}_')
         tempdir = normalize_path(tdir.name)
-        tempfile_id = '3119234'
+        tempfile_id = '87'
         tempfile_ext = 'mp4'
         tempfile_fullpath = f'{tempdir}{tempfile_id}.{tempfile_ext}'
         arglist1 = ['-path', tempdir, '-pages', '999', '-dmode', 'touch', '-naming', 'none', '-quality', '360p', '-log', 'trace',
-                    '-begin_id', tempfile_id, '-stop_id', tempfile_id, '-search_tag', 'fangs', '-search_art', 'ayasz']
+                    '-begin_id', tempfile_id, '-stop_id', tempfile_id, '-search_tag', 'world_of_warcraft+abs', '-search_art', 'faun']
         pages_main_sync(arglist1)
         self.assertTrue(path.isfile(tempfile_fullpath))
         st = stat(tempfile_fullpath)
@@ -262,7 +262,7 @@ class DownloadTests(TestCase):
         set_up_test()
         tdir = TemporaryDirectory(prefix=f'{APP_NAME}_{self._testMethodName}_')
         tempdir = normalize_path(tdir.name)
-        tempfile_id = '3055235'
+        tempfile_id = '87'
         tempfile_ext = 'mp4'
         tempfile_fullpath = f'{tempdir}{tempfile_id}.{tempfile_ext}'
         arglist1 = ['-path', tempdir, '-start', tempfile_id, '-dmode', 'full', '-naming', 'none', '-quality', '360p', '-log', 'trace']
@@ -279,11 +279,11 @@ class DownloadTests(TestCase):
         set_up_test()
         tdir = TemporaryDirectory(prefix=f'{APP_NAME}_{self._testMethodName}_')
         tempdir = normalize_path(tdir.name)
-        tempfile_id = '3144801'
+        tempfile_id = '87'
         tempfile_ext = 'mp4'
         tempfile_fullpath = f'{tempdir}{tempfile_id}.{tempfile_ext}'
         arglist1 = ['-path', tempdir, '-pages', '999', '-dmode', 'full', '-naming', 'none', '-quality', '360p', '-log', 'trace',
-                    '-begin_id', tempfile_id, '-stop_id', tempfile_id, '-search_tag', '4k', '-search_art', 'mikeymack']
+                    '-begin_id', tempfile_id, '-stop_id', tempfile_id, '-search_tag', 'world_of_warcraft+abs', '-search_art', 'faun']
         pages_main_sync(arglist1)
         self.assertTrue(path.isfile(tempfile_fullpath))
         st = stat(tempfile_fullpath)
