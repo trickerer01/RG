@@ -186,10 +186,12 @@ class CmdTests(TestCase):
         prepare_arglist(['-search_tag', '3*,2?', '-search_rule_tag', 'any',
                          '-search_art', 'dark*', '-search_rule_art', 'any',
                          '-search_cat', 'kling_ai*', '-search_rule_cat', 'any',
+                         # '-blacklist', 'a:6*9,c:*z,t:6g*,t:8*',
                          '-start', '3', '-pages', '2', '-quality', '720p'], True)
         self.assertEqual('101,55', Config.search_tags)
         self.assertEqual('109,405,75,91', Config.search_arts)
         self.assertEqual('23,32,39', Config.search_cats)
+        # self.assertEqual('model:25905,model:34361,cat:1277,cat:315,cat:3315,cat:557,tag:38580,tag:3966', Config.blacklist)
         self.assertEqual('any', Config.search_rule_tag)
         self.assertEqual('any', Config.search_rule_art)
         self.assertEqual('any', Config.search_rule_cat)
