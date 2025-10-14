@@ -11,8 +11,17 @@ from argparse import Namespace
 from aiohttp import ClientTimeout
 
 from defs import (
-    Quality, Duration, CONNECT_TIMEOUT_BASE, LOGGING_FLAGS, DOWNLOAD_POLICY_DEFAULT, NAMING_FLAGS_DEFAULT, DOWNLOAD_MODE_DEFAULT,
-    DEFAULT_QUALITY, MAX_DEST_SCAN_SUB_DEPTH_DEFAULT, MAX_DEST_SCAN_UPLEVELS_DEFAULT, CONNECT_RETRIES_BASE,
+    CONNECT_RETRIES_BASE,
+    CONNECT_TIMEOUT_BASE,
+    DEFAULT_QUALITY,
+    DOWNLOAD_MODE_DEFAULT,
+    DOWNLOAD_POLICY_DEFAULT,
+    LOGGING_FLAGS,
+    MAX_DEST_SCAN_SUB_DEPTH_DEFAULT,
+    MAX_DEST_SCAN_UPLEVELS_DEFAULT,
+    NAMING_FLAGS_DEFAULT,
+    Duration,
+    Quality,
 )
 
 if False is True:
@@ -158,7 +167,7 @@ class BaseConfig:
         self.search_rule_art = getattr(params, 'search_rule_art', self.search_rule_art)
         self.search_rule_cat = getattr(params, 'search_rule_cat', self.search_rule_cat)
         self.playlist_id, self.playlist_name = (
-            getattr(params, 'playlist_id') if getattr(params, 'playlist_id', (0,))[0] else getattr(params, 'playlist_name')
+            params.playlist_id if getattr(params, 'playlist_id', (0,))[0] else params.playlist_name
         ) if hasattr(params, 'playlist_id') or hasattr(params, 'playlist_name') else (self.playlist_id, self.playlist_name)
         self.favourites = getattr(params, 'favourites', self.favourites)
         self.uploader = getattr(params, 'uploader', self.uploader)
@@ -202,7 +211,7 @@ class BaseConfig:
             *(('-nomove',) if self.no_rename_move else ()),
             *(('-session_id', self.session_id) if self.session_id else ()),
             *self.extra_tags,
-            *(('-script', self.scenario.fmt_str) if self.scenario else ())
+            *(('-script', self.scenario.fmt_str) if self.scenario else ()),
         ]
         return arglist
 

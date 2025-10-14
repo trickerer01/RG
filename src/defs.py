@@ -6,11 +6,11 @@ Author: trickerer (https://github.com/trickerer, https://github.com/trickerer01)
 #
 #
 
+import base64
+import datetime
+import os
 from abc import ABC, abstractmethod
-from base64 import b64decode
-from datetime import datetime
 from enum import IntEnum
-from os import path
 from typing import TypeVar
 
 MIN_PYTHON_VERSION = (3, 10)
@@ -43,37 +43,37 @@ UTF8 = 'utf-8'
 TAGS_CONCAT_CHAR = ','
 DEFAULT_EXT = 'mp4'
 EXTENSIONS_V = (DEFAULT_EXT, 'webm')
-START_TIME = datetime.now()
+START_TIME = datetime.datetime.now()
 
-SITE = b64decode('aHR0cHM6Ly9ydWxlMzRnZW4uY29t').decode()
-SITE_AJAX_REQUEST_SEARCH_PAGE = b64decode(
+SITE = base64.b64decode('aHR0cHM6Ly9ydWxlMzRnZW4uY29t').decode()
+SITE_AJAX_REQUEST_SEARCH_PAGE = base64.b64decode(
     'aHR0cHM6Ly9ydWxlMzRnZW4uY29tL3NlYXJjaC8/bW9kZT1hc3luYyZmdW5jdGlvbj1nZXRfYmxvY2smYmxvY2tfaWQ9Y3VzdG9tX2xpc3RfdmlkZW9zX3ZpZGVvc19saXN0X3'
     'NlYXJjaCZzb3J0X2J5PXBvc3RfZGF0ZSZ0YWdfaWRzPSVzJm1vZGVsX2lkcz0lcyZjYXRlZ29yeV9pZHM9JXMmcT0lcyZmcm9tX3ZpZGVvcz0lZA==').decode()
-"""Params required: **tags**, **artists**, **categories**, **search**, **page** - **str**, **str**, **str**, **str**, **int**\n
-Ex. SITE_AJAX_REQUEST_SEARCH_PAGE % ('1,2', '3,4,5', '6', 'sfw', 1)"""
-SITE_AJAX_REQUEST_VIDEO = b64decode('aHR0cHM6Ly9ydWxlMzRnZW4uY29tL3BvcHVwLXZpZGVvLyVkLw==').decode()
-"""Params required: **video_id** - **int**\n
-Ex. SITE_AJAX_REQUEST_VIDEO % (1071113)"""
-SITE_AJAX_REQUEST_PLAYLIST_PAGE = b64decode(
+'''Params required: **tags**, **artists**, **categories**, **search**, **page** - **str**, **str**, **str**, **str**, **int**\n
+Ex. SITE_AJAX_REQUEST_SEARCH_PAGE % ('1,2', '3,4,5', '6', 'sfw', 1)'''
+SITE_AJAX_REQUEST_VIDEO = base64.b64decode('aHR0cHM6Ly9ydWxlMzRnZW4uY29tL3BvcHVwLXZpZGVvLyVkLw==').decode()
+'''Params required: **video_id** - **int**\n
+Ex. SITE_AJAX_REQUEST_VIDEO % (1071113)'''
+SITE_AJAX_REQUEST_PLAYLIST_PAGE = base64.b64decode(
     'aHR0cHM6Ly9ydWxlMzRnZW4uY29tL3BsYXlsaXN0cy8lZC8lcy8/bW9kZT1hc3luYyZmdW5jdGlvbj1nZXRfYmxvY2smYmxvY2tfaWQ9cGxheWxpc3Rfdmlld19wbGF5bGlzdF'
     '92aWV3JnNvcnRfYnk9YWRkZWQyZmF2X2RhdGUmZnJvbT0lZA==').decode()
-"""Params required: **playlist_id**, **playlist_name**, **page** - **int**, **str**, **int**\n
-Ex. SITE_AJAX_REQUEST_PLAYLIST_PAGE % (999, 'stuff', 1)"""
-SITE_AJAX_REQUEST_FAVOURITES_PAGE = b64decode(
+'''Params required: **playlist_id**, **playlist_name**, **page** - **int**, **str**, **int**\n
+Ex. SITE_AJAX_REQUEST_PLAYLIST_PAGE % (999, 'stuff', 1)'''
+SITE_AJAX_REQUEST_FAVOURITES_PAGE = base64.b64decode(
     'aHR0cHM6Ly9ydWxlMzRnZW4uY29tL21lbWJlcnMvJWQvZmF2b3VyaXRlcy92aWRlb3MvP21vZGU9YXN5bmMmZnVuY3Rpb249Z2V0X2Jsb2NrJmJsb2NrX2lkPWxpc3RfdmlkZW'
     '9zX2Zhdm91cml0ZV92aWRlb3Mmc29ydF9ieT0mZnJvbV9mYXZfdmlkZW9zPSVk').decode()
-"""Params required: **user_id**, **page** - **int**, **int**\n
-Ex. SITE_AJAX_REQUEST_FAVOURITES_PAGE % (2083334, 1)"""
-SITE_AJAX_REQUEST_UPLOADER_PAGE = b64decode(
+'''Params required: **user_id**, **page** - **int**, **int**\n
+Ex. SITE_AJAX_REQUEST_FAVOURITES_PAGE % (2083334, 1)'''
+SITE_AJAX_REQUEST_UPLOADER_PAGE = base64.b64decode(
     'aHR0cHM6Ly9ydWxlMzRnZW4uY29tL21lbWJlcnMvJWQvdmlkZW9zLz9tb2RlPWFzeW5jJmZ1bmN0aW9uPWdldF9ibG9jayZibG9ja19pZD1saXN0X3ZpZGVvc191cGxvYWRlZF'
     '92aWRlb3Mmc29ydF9ieT0mZnJvbV92aWRlb3M9JWQ=').decode()
-"""Params required: **user_id**, **page** - **int**, **int**\n
-Ex. SITE_AJAX_REQUEST_UPLOADER_PAGE % (158018, 1)"""
-SITE_AJAX_REQUEST_MODEL_PAGE = b64decode(
+'''Params required: **user_id**, **page** - **int**, **int**\n
+Ex. SITE_AJAX_REQUEST_UPLOADER_PAGE % (158018, 1)'''
+SITE_AJAX_REQUEST_MODEL_PAGE = base64.b64decode(
     'aHR0cHM6Ly9ydWxlMzRnZW4uY29tL21vZGVscy8lcy8/bW9kZT1hc3luYyZmdW5jdGlvbj1nZXRfYmxvY2smYmxvY2tfaWQ9Y3VzdG9tX2xpc3RfdmlkZW9zX2NvbW1vbl92aW'
     'Rlb3Mmc29ydF9ieT0mZnJvbT0lZA==').decode()
-"""Params required: **artist_name**, **page** - **str**, **int**\n
-Ex. SITE_AJAX_REQUEST_MODEL_PAGE % ('gray', 1)"""
+'''Params required: **artist_name**, **page** - **str**, **int**\n
+Ex. SITE_AJAX_REQUEST_MODEL_PAGE % ('gray', 1)'''
 
 USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Goanna/6.7 Firefox/102.0 PaleMoon/33.3.1'
 DEFAULT_HEADERS = {'User-Agent': USER_AGENT}
@@ -82,7 +82,7 @@ DEFAULT_HEADERS = {'User-Agent': USER_AGENT}
 DOWNLOAD_POLICY_NOFILTERS = 'nofilters'
 DOWNLOAD_POLICY_ALWAYS = 'always'
 UNTAGGED_POLICIES = (DOWNLOAD_POLICY_NOFILTERS, DOWNLOAD_POLICY_ALWAYS)
-"""('nofilters','always')"""
+'''('nofilters','always')'''
 DOWNLOAD_POLICY_DEFAULT = DOWNLOAD_POLICY_NOFILTERS
 """'nofilters'"""
 
@@ -91,7 +91,7 @@ DOWNLOAD_MODE_FULL = 'full'
 DOWNLOAD_MODE_TOUCH = 'touch'
 DOWNLOAD_MODE_SKIP = 'skip'
 DOWNLOAD_MODES = (DOWNLOAD_MODE_FULL, DOWNLOAD_MODE_TOUCH, DOWNLOAD_MODE_SKIP)
-"""('full','touch','skip')"""
+'''('full','touch','skip')'''
 DOWNLOAD_MODE_DEFAULT = DOWNLOAD_MODE_FULL
 """'full'"""
 
@@ -99,7 +99,7 @@ DOWNLOAD_MODE_DEFAULT = DOWNLOAD_MODE_FULL
 SEARCH_RULE_ALL = 'all'
 SEARCH_RULE_ANY = 'any'
 SEARCH_RULES = (SEARCH_RULE_ALL, SEARCH_RULE_ANY)
-"""('all','any')"""
+'''('all','any')'''
 SEARCH_RULE_DEFAULT = SEARCH_RULE_ALL
 """'all'"""
 
@@ -142,11 +142,11 @@ class NamingFlags:
     # extra
     USE_URL_TITLE = 0x20
     ALL_DEFAULT = PREFIX | SCORE | TITLE | TAGS | QUALITY
-    """0x1F"""
+    '''0x1F'''
     ALL_EXTRA = USE_URL_TITLE
-    """0x20"""
+    '''0x20'''
     ALL = ALL_DEFAULT | ALL_EXTRA
-    """0x3F"""
+    '''0x3F'''
 
 
 NAMING_FLAGS = {
@@ -159,12 +159,12 @@ NAMING_FLAGS = {
     'full': f'0x{NamingFlags.ALL_DEFAULT:02X}',
     'urltitle': f'0x{NamingFlags.USE_URL_TITLE:02X}',
 }
-"""
+'''
 {\n\n'none': '0x00',\n\n'prefix': '0x01',\n\n'score': '0x02',\n\n'title': '0x04',\n\n'tags': '0x08',\n\n'quality': '0x10',
 \n\n'full': '0x1F'\n\n'urltitle': '0x20'\n\n}
-"""
+'''
 NAMING_FLAGS_DEFAULT = NamingFlags.ALL_DEFAULT
-"""0x1F"""
+'''0x1F'''
 
 
 class LoggingFlags(IntEnum):
@@ -177,7 +177,7 @@ class LoggingFlags(IntEnum):
     FATAL = 0x800
     # unused
     ALL = FATAL | ERROR | WARN | INFO | DEBUG | TRACE
-    """0x81F"""
+    '''0x81F'''
 
     def __str__(self) -> str:
         return f'{self.name} (0x{self.value:03X})'
@@ -190,13 +190,13 @@ LOGGING_FLAGS = {
     'debug': f'0x{LoggingFlags.DEBUG.value:03X}',
     'trace': f'0x{LoggingFlags.TRACE.value:03X}',
 }
-"""{\n\n'error': '0x010',\n\n'warn': '0x008',\n\n'info': '0x004',\n\n'debug': '0x002',\n\n'trace': '0x001'\n\n}"""
+'''{\n\n'error': '0x010',\n\n'warn': '0x008',\n\n'info': '0x004',\n\n'debug': '0x002',\n\n'trace': '0x001'\n\n}'''
 LOGGING_FLAGS_DEFAULT = LoggingFlags.INFO
-"""0x004"""
+'''0x004'''
 
 ACTION_STORE_TRUE = 'store_true'
 
-SRC_PATH = path.abspath(path.dirname(__file__)).replace('\\', SLASH)
+SRC_PATH = os.path.abspath(os.path.dirname(__file__)).replace('\\', SLASH)
 FILE_LOC_TAGS = f'{SRC_PATH}/../2tags/rg_tags.json'
 FILE_LOC_CATS = f'{SRC_PATH}/../3categories/rg_cats.json'
 FILE_LOC_ARTS = f'{SRC_PATH}/../4artists/rg_arts.json'

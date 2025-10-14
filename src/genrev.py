@@ -7,11 +7,11 @@ Author: trickerer (https://github.com/trickerer, https://github.com/trickerer01)
 #
 
 # native
-from os import path
+import os
 
 __all__ = ()
 
-CWD = path.abspath(path.curdir).replace('\\', '/')
+CWD = os.path.abspath(os.path.curdir).replace('\\', '/')
 APP_REV_FILE_PATH = f'{CWD}/src/version.py'
 STR_APP_REVISION = 'APP_REVISION = \''
 
