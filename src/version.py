@@ -9,7 +9,7 @@ Author: trickerer (https://github.com/trickerer, https://github.com/trickerer01)
 APP_NAME = 'RG'
 APP_VER_MAJOR = '1'
 APP_VER_SUB = '8'
-APP_REVISION = '137'
+APP_REVISION = '138'
 APP_VERSION = f'{APP_VER_MAJOR}.{APP_VER_SUB}.{APP_REVISION}'
 
 #
