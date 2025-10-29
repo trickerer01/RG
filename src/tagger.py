@@ -73,7 +73,7 @@ def valid_playlist_name(plist: str) -> tuple[int, str]:
             load_playlist_nums()
         plist_v = PLA_NUMS[plist]
         plist_name, plist_numb = plist, int(plist_v)
-        return (plist_numb, plist_name)
+        return plist_numb, plist_name
     except Exception:
         raise ValueError
 
@@ -85,7 +85,7 @@ def valid_playlist_id(plist: str) -> tuple[int, str]:
             load_playlist_nums_rev()
         plist_v = PLA_NUMS_REV[plist]
         plist_name, plist_numb = plist_v, int(plist)
-        return (plist_numb, plist_name)
+        return plist_numb, plist_name
     except Exception:
         raise ValueError
 
