@@ -44,7 +44,7 @@ from tagger import (
 from util import normalize_path
 from version import APP_NAME, APP_VERSION
 
-RUN_CONN_TESTS = 0
+RUN_CONN_TESTS = 1
 
 
 def set_up_test(log=False) -> None:
@@ -268,7 +268,7 @@ class DownloadTests(TestCase):
         tempfile_ext = 'mp4'
         tempfile_fullpath = f'{tempdir}{tempfile_id}.{tempfile_ext}'
         arglist1 = ['-path', tempdir, '-pages', '999', '-dmode', 'touch', '-naming', 'none', '-quality', '360p', '-log', 'trace',
-                    '-begin_id', tempfile_id, '-stop_id', tempfile_id, '-search_tag', 'world_of_warcraft+abs', '-search_art', 'faun']
+                    '-begin_id', tempfile_id, '-stop_id', tempfile_id, '-search_tag', 'abs', '-search_art', 'faun']
         pages_main_sync(arglist1)
         self.assertTrue(os.path.isfile(tempfile_fullpath))
         st = os.stat(tempfile_fullpath)
@@ -303,7 +303,7 @@ class DownloadTests(TestCase):
         tempfile_ext = 'mp4'
         tempfile_fullpath = f'{tempdir}{tempfile_id}.{tempfile_ext}'
         arglist1 = ['-path', tempdir, '-pages', '999', '-dmode', 'full', '-naming', 'none', '-quality', '360p', '-log', 'trace',
-                    '-begin_id', tempfile_id, '-stop_id', tempfile_id, '-search_tag', 'world_of_warcraft+abs', '-search_art', 'faun']
+                    '-begin_id', tempfile_id, '-stop_id', tempfile_id, '-search_tag', 'abs', '-search_art', 'faun']
         pages_main_sync(arglist1)
         self.assertTrue(os.path.isfile(tempfile_fullpath))
         st = os.stat(tempfile_fullpath)
