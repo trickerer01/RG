@@ -8,25 +8,21 @@ Author: trickerer (https://github.com/trickerer, https://github.com/trickerer01)
 
 import functools
 import os
-from asyncio import run as run_async
 from collections.abc import Callable
 from io import StringIO
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
-from rg.cmdargs import prepare_arglist
-from rg.config import Config
-from rg.defs import DOWNLOAD_MODE_TOUCH, QUALITIES, QUALITY_480P, SEARCH_RULE_DEFAULT, SITE, Duration
-from rg.fetch_html import RequestQueue
-from rg.logger import Log
-from rg.main import main as ids_main
-from rg.main import main as pages_main
-from rg.main import main_sync as ids_main_sync
-from rg.main import main_sync as pages_main_sync
-from rg.path_util import found_filenames_dict
-from rg.rex import prepare_regex_fullmatch
-from rg.tagger import (
+from .cmdargs import prepare_arglist
+from .config import Config
+from .defs import DOWNLOAD_MODE_TOUCH, QUALITIES, QUALITY_480P, SEARCH_RULE_DEFAULT, SITE, Duration
+from .fetch_html import RequestQueue
+from .logger import Log
+from .main import main_sync
+from .path_util import found_filenames_dict
+from .rex import prepare_regex_fullmatch
+from .tagger import (
     ART_NUMS,
     CAT_NUMS,
     PLA_NUMS,
@@ -44,8 +40,8 @@ from rg.tagger import (
     match_text,
     normalize_wtag,
 )
-from rg.util import normalize_path
-from rg.version import APP_NAME, APP_VERSION
+from .util import normalize_path
+from .version import APP_NAME, APP_VERSION
 
 RUN_CONN_TESTS = 0
 
@@ -112,14 +108,14 @@ class CmdTests(TestCase):
     @test_prepare()
     def test_output_version_pages(self):
         with patch('sys.stdout', new_callable=StringIO) as stdout:
-            run_async(pages_main(['--version']))
+            main_sync(['--version'])
             self.assertEqual(f'{APP_NAME} {APP_VERSION}', stdout.getvalue().strip('\n'))
         print(f'{self._testMethodName} passed')
 
     @test_prepare()
     def test_output_version_ids(self):
         with patch('sys.stdout', new_callable=StringIO) as stdout:
-            run_async(ids_main(['--version']))
+            main_sync(['--version'])
             self.assertEqual(f'{APP_NAME} {APP_VERSION}', stdout.getvalue().strip('\n'))
         print(f'{self._testMethodName} passed')
 
@@ -295,7 +291,7 @@ class DownloadTests(TestCase):
         arglist1 = [
             'ids', '-path', tempdir, '-start', tempfile_id, '-dmode', 'touch', '-naming', 'none', '-quality', '360p', '-log', 'trace',
         ]
-        ids_main_sync(arglist1)
+        main_sync(arglist1)
         self.assertTrue(os.path.isfile(tempfile_fullpath))
         st = os.stat(tempfile_fullpath)
         self.assertEqual(0, st.st_size)
@@ -315,7 +311,7 @@ class DownloadTests(TestCase):
             'pages', '-path', tempdir, '-pages', '999', '-dmode', 'touch', '-naming', 'none', '-quality', '360p', '-log', 'trace',
             '-begin_id', tempfile_id, '-stop_id', tempfile_id, '-search_tag', 'abs', '-search_art', 'faun',
         ]
-        pages_main_sync(arglist1)
+        main_sync(arglist1)
         self.assertTrue(os.path.isfile(tempfile_fullpath))
         st = os.stat(tempfile_fullpath)
         self.assertEqual(0, st.st_size)
@@ -334,7 +330,7 @@ class DownloadTests(TestCase):
         arglist1 = [
             'ids', '-path', tempdir, '-start', tempfile_id, '-dmode', 'full', '-naming', 'none', '-quality', '360p', '-log', 'trace',
         ]
-        ids_main_sync(arglist1)
+        main_sync(arglist1)
         self.assertTrue(os.path.isfile(tempfile_fullpath))
         st = os.stat(tempfile_fullpath)
         self.assertGreater(st.st_size, 0)
@@ -354,7 +350,7 @@ class DownloadTests(TestCase):
             'pages', '-path', tempdir, '-pages', '999', '-dmode', 'full', '-naming', 'none', '-quality', '360p', '-log', 'trace',
             '-begin_id', tempfile_id, '-stop_id', tempfile_id, '-search_tag', 'abs', '-search_art', 'faun',
         ]
-        pages_main_sync(arglist1)
+        main_sync(arglist1)
         self.assertTrue(os.path.isfile(tempfile_fullpath))
         st = os.stat(tempfile_fullpath)
         self.assertGreater(st.st_size, 0)
