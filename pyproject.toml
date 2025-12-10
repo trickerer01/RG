@@ -65,6 +65,9 @@ rg = 'rg:main'
 [tool.setuptools]
 py-modules = ['rg']
 
+[tool.setuptools.packages]
+find = {include = ['rg']}
+
 [tool.ruff]
 line-length = 140
 
