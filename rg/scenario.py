@@ -78,6 +78,7 @@ class DownloadScenario:
             try:
                 subfolder, args = query_raw.split(': ')
                 parsed, unks = parser.parse_known_args(args.split())
+                parsed.minimum_score = None  # 26.02.2026
                 taglist: Sequence[str]
                 for i, taglist in enumerate((parsed.extra_tags, unks)):
                     for tag in taglist:

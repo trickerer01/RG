@@ -18,9 +18,9 @@ re_ext = re.compile(r'(\.[^&]{3,5})&')
 re_time = re.compile(r'\d+(?::\d+){1,2}')
 # re_private_video = re_compile(r'^This is a private video\..*?$')
 # pages
-re_page_entry = re.compile(r'video/(\d+)/')
+re_page_entry = re.compile(r'videos/(\d+)/')
 re_preview_entry = re.compile(r'/(\d+)_preview[^.]*?\.([^/]+)/')
-re_paginator = re.compile(r'from(?:_(?:fav_)?(?:albums|videos)|1)?:(\d+)')
+# re_paginator = re.compile(r'from(?:_(?:fav_)?(?:albums|videos)|1)?:(\d+)')
 # validators
 re_non_search_symbols = re.compile(r'[^\da-zA-Z._+\-\[\]]')
 re_session_id = re.compile(r'[a-z0-9]{26}')

@@ -50,11 +50,11 @@ START_TIME = datetime.datetime.now()
 
 SITE = base64.b64decode('aHR0cHM6Ly9ydWxlMzRnZW4uY29t').decode()
 SITE_AJAX_REQUEST_SEARCH_PAGE = base64.b64decode(
-    'aHR0cHM6Ly9ydWxlMzRnZW4uY29tL3NlYXJjaC8/bW9kZT1hc3luYyZmdW5jdGlvbj1nZXRfYmxvY2smYmxvY2tfaWQ9Y3VzdG9tX2xpc3RfdmlkZW9zX3ZpZGVvc19saXN0X3'
-    'NlYXJjaCZzb3J0X2J5PXBvc3RfZGF0ZSZ0YWdfaWRzPSVzJm1vZGVsX2lkcz0lcyZjYXRlZ29yeV9pZHM9JXMmcT0lcyZmcm9tX3ZpZGVvcz0lZA==').decode()
+    'aHR0cHM6Ly9ydWxlMzRnZW4uY29tL3NlYXJjaC8/bW9kZT1hc3luYyZmdW5jdGlvbj1nZXRfYmxvY2smYmxvY2tfaWQ9bGlzdF92aWRlb3NfY29tbW9uX3ZpZGVvc19saXN0Jn'
+    'NvcnRfYnk9cG9zdF9kYXRlJnRhZ19pZHM9JXMmbW9kZWxfaWRzPSVzJmNhdGVnb3J5X2lkcz0lcyZxPSVzJmZyb209JWQ=').decode()
 '''Params required: **tags**, **artists**, **categories**, **search**, **page** - **str**, **str**, **str**, **str**, **int**\n
 Ex. SITE_AJAX_REQUEST_SEARCH_PAGE % ('1,2', '3,4,5', '6', 'sfw', 1)'''
-SITE_AJAX_REQUEST_VIDEO = base64.b64decode('aHR0cHM6Ly9ydWxlMzRnZW4uY29tL3BvcHVwLXZpZGVvLyVkLw==').decode()
+SITE_AJAX_REQUEST_VIDEO = base64.b64decode('aHR0cHM6Ly9ydWxlMzRnZW4uY29tL3ZpZGVvcy8lZC9hLz9wb3B1cD10cnVl').decode()
 '''Params required: **video_id** - **int**\n
 Ex. SITE_AJAX_REQUEST_VIDEO % (1071113)'''
 SITE_AJAX_REQUEST_PLAYLIST_PAGE = base64.b64decode(
@@ -73,8 +73,8 @@ SITE_AJAX_REQUEST_UPLOADER_PAGE = base64.b64decode(
 '''Params required: **user_id**, **page** - **int**, **int**\n
 Ex. SITE_AJAX_REQUEST_UPLOADER_PAGE % (158018, 1)'''
 SITE_AJAX_REQUEST_MODEL_PAGE = base64.b64decode(
-    'aHR0cHM6Ly9ydWxlMzRnZW4uY29tL21vZGVscy8lcy8/bW9kZT1hc3luYyZmdW5jdGlvbj1nZXRfYmxvY2smYmxvY2tfaWQ9Y3VzdG9tX2xpc3RfdmlkZW9zX2NvbW1vbl92aW'
-    'Rlb3Mmc29ydF9ieT0mZnJvbT0lZA==').decode()
+    'aHR0cHM6Ly9ydWxlMzRnZW4uY29tL21vZGVscy8lcy8/bW9kZT1hc3luYyZmdW5jdGlvbj1nZXRfYmxvY2smYmxvY2tfaWQ9bGlzdF92aWRlb3NfY29tbW9uX3ZpZGVvc19saX'
+    'N0JnNvcnRfYnk9JmZyb209JWQ=').decode()
 '''Params required: **artist_name**, **page** - **str**, **int**\n
 Ex. SITE_AJAX_REQUEST_MODEL_PAGE % ('gray', 1)'''
 
