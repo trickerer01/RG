@@ -201,27 +201,23 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
         return DownloadResult.FAIL_ALREADY_EXISTS
     my_tags = filtered_tags(sorted(tags_raw)) or my_tags
 
-    # 26.02.2026 - internal API changes removed download section altogether
-    player = a_html.find('div', class_='player')
-    if (err := player.find('div', class_='player__error')) and (msg := err.find('span')):
-        Log.warn(f'Cannot find download section for {sname}, reason: \'{msg.string.strip()}\', skipping...')
-        return DownloadResult.FAIL_DELETED
-
-    pscript = player.find('script').string.strip()
-    urls_idx1 = pscript.find('video_url')
-    urls_idx2 = pscript.find('timeline', urls_idx1)
-    urls_all = pscript[urls_idx1:urls_idx2].strip()[:-1].replace(' ', '').replace('\t', '').split(',')
-    urls_dict: dict[str, str] = {k.strip('\''): v.strip('\'') for k, v in tuple(_.strip('"').split(':', 1) for _ in urls_all)}
-
-    links: list[str] = []
-    qualities: list[str] = []
-    for tokens in zip(('_alt', '_alt', '_alt', '_alt', ''), ('4', '3', '2', '', ''), strict=True):
-        qtype = f'video{tokens[0]}_url{tokens[1]}'
-        qtype_q = f'{qtype}_text'
-        url, quality = urls_dict.get(qtype), urls_dict.get(qtype_q)
-        if url and quality:
-            links.append(url)
-            qualities.append(quality)
+    tries = 0
+    while True:
+        ddiv = a_html.find('span', string='Download:')
+        if ddiv is not None and ddiv.parent is not None:
+            break
+        if message_span := a_html.find('span', class_='message'):
+            Log.warn(f'Cannot find download section for {sname}, reason: \'{message_span.text}\', skipping...')
+            return DownloadResult.FAIL_DELETED
+        elif tries >= 5:
+            Log.error(f'Cannot find download section for {sname} after {tries:d} tries, failed!')
+            return DownloadResult.FAIL_RETRIES
+        tries += 1
+        Log.debug(f'No download section for {sname}, retry #{tries:d}...')
+        a_html = await fetch_html(SITE_AJAX_REQUEST_VIDEO % vi.id)
+    links = ddiv.parent.find_all('a', attrs={'data-attach-session': 'PHPSESSID'})
+    download_tups = [tuple(lin.get_text(strip=True).replace('  ', ' ').split(' ', 2)) for lin in links if lin.text]
+    qualities = tuple(_[1] for _ in download_tups)
 
     if vi.quality not in qualities:
         q_idx = 0
@@ -230,7 +226,7 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
         link_idx = q_idx
     else:
         link_idx = qualities.index(vi.quality)
-    vi.link = links[link_idx]
+    vi.link = links[link_idx]['href']
 
     prefix = PREFIX if has_naming_flag(NamingFlags.PREFIX) else ''
     fname_part2 = extract_ext(vi.link)
