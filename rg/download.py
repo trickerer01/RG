@@ -96,7 +96,7 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
 
     if not vi.title:
         titleh1 = a_html.find('h1', class_='heading__title')
-        vi.title = titleh1.string if titleh1 else ''
+        vi.title = str(titleh1.string) if titleh1 else ''
     if not vi.duration:
         vi.duration = get_time_seconds(str(a_html.find('span', string='Duration:').next_sibling.next_sibling.string))
 
@@ -105,7 +105,7 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
     try:
         views_to_votes_rate = 0.005  # 0.5%
         views_count = int(a_html.find('span', string='Views:').parent.find('strong').string.replace(' ', ''))
-        rating = a_html.find(class_='progress')['value']
+        rating = a_html.find(class_='progress').get('value')
         rating_temp = int(rating)
         rating_neg = rating_neg_temp = 100 - rating_temp
         while not any(_ & 1 for _ in (rating_temp, rating_neg_temp)):
@@ -129,7 +129,7 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
         Log.warn(f'Warning: cannot extract categories for {sname}.')
         my_categories: list[str] = []
     try:
-        vi.uploader = a_html.find('span', string='Uploaded by:').parent.find('a').find('span').string.lower()
+        vi.uploader = str(a_html.find('span', string='Uploaded by:').parent.find('a').find('span').string).lower()
     except Exception:
         Log.warn(f'Warning: cannot extract uploader for {sname}.')
     tspan = a_html.find('span', string='Tags:')
@@ -226,7 +226,7 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
         link_idx = q_idx
     else:
         link_idx = qualities.index(vi.quality)
-    vi.link = links[link_idx]['href']
+    vi.link = links[link_idx].get('href')
 
     prefix = PREFIX if has_naming_flag(NamingFlags.PREFIX) else ''
     fname_part2 = extract_ext(vi.link)
