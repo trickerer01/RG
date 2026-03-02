@@ -54,7 +54,7 @@ SITE_AJAX_REQUEST_SEARCH_PAGE = base64.b64decode(
     'NvcnRfYnk9cG9zdF9kYXRlJnRhZ19pZHM9JXMmbW9kZWxfaWRzPSVzJmNhdGVnb3J5X2lkcz0lcyZxPSVzJmZyb209JWQ=').decode()
 '''Params required: **tags**, **artists**, **categories**, **search**, **page** - **str**, **str**, **str**, **str**, **int**\n
 Ex. SITE_AJAX_REQUEST_SEARCH_PAGE % ('1,2', '3,4,5', '6', 'sfw', 1)'''
-SITE_AJAX_REQUEST_VIDEO = base64.b64decode('aHR0cHM6Ly9ydWxlMzRnZW4uY29tL3ZpZGVvcy8lZC9hLz9wb3B1cD10cnVl').decode()
+SITE_AJAX_REQUEST_VIDEO = base64.b64decode('aHR0cHM6Ly9ydWxlMzRnZW4uY29tL3ZpZGVvLyVkL2EvP3BvcHVwPXRydWU=').decode()
 '''Params required: **video_id** - **int**\n
 Ex. SITE_AJAX_REQUEST_VIDEO % (1071113)'''
 SITE_AJAX_REQUEST_PLAYLIST_PAGE = base64.b64decode(
