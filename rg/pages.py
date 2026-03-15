@@ -112,9 +112,12 @@ async def process_pages() -> int:
                         Log.warn(f'Warning: id {cur_id:d} already queued, skipping')
                         continue
                     queued_ids.add(cur_id)
-                    my_title = str(aref.get('title') or aref.find('span', class_='card__title').string.strip())
+                    my_title = (str(aref.get('title')
+                                or (aref.find('img') or {'alt': ''}).get('alt')
+                                or aref.find('span', class_='card__title').string.strip()))
                     my_utitle = str(aref['href'][:-1][aref['href'][:-1].rfind('/') + 1:])
-                    my_duration = get_time_seconds(aref.find('span', class_='card__label--primary').string)
+                    my_duration_span = aref.find('span', class_='card__label--primary')
+                    my_duration = get_time_seconds(my_duration_span.string) if my_duration_span else 0
                     use_utitle = has_naming_flag(NamingFlags.USE_URL_TITLE)
                     v_entries.append(VideoInfo(cur_id, my_utitle if use_utitle else my_title, m_duration=my_duration))
             else:
