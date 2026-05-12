@@ -20,7 +20,7 @@ re_time = re.compile(r'\d+(?::\d+){1,2}')
 # pages
 re_page_entry = re.compile(r'video/(\d+)/')
 re_preview_entry = re.compile(r'/(\d+)_preview[^.]*?\.([^/]+)/')
-# re_paginator = re.compile(r'from(?:_(?:fav_)?(?:albums|videos)|1)?:(\d+)')
+re_paginator = re.compile(r'from(?:_(?:fav_)?(?:albums|videos)|1)?:(\d+)')
 # validators
 re_non_search_symbols = re.compile(r'[^\da-zA-Z._+\-\[\]]')
 re_session_id = re.compile(r'[a-z0-9]{26}')

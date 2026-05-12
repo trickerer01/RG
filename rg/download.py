@@ -42,7 +42,7 @@ from .idgaps import IdGapsPredictor
 from .iinfo import VideoInfo, export_video_info, get_min_max_ids
 from .logger import Log
 from .path_util import file_already_exists, is_file_being_used, register_new_file, try_rename, unregister_unfinished_file
-from .rex import re_media_filename
+from .rex import re_media_filename, re_time
 from .tagger import filtered_tags, is_filtered_out_by_extra_tags, solve_tag_conflicts
 from .util import calculate_eta, extract_ext, format_time, get_elapsed_time_i, get_time_seconds, has_naming_flag, normalize_path
 
@@ -88,6 +88,10 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
         Log.error(f'Got empty HTML page for {sname}! Rescanning...')
         return DownloadResult.FAIL_EMPTY_HTML
 
+    if a_html.find('title', string=lambda x: 'Maintenance' in x):
+        Log.error(f'Got maintenance page for {sname}! Rescanning...')
+        return DownloadResult.FAIL_EMPTY_HTML
+
     if a_html.find('title', string='404 Not Found') or a_html.find('title', string='Page not Found'):
         Log.error(f'Got error 404 for {sname}, skipping...')
         gpred.count_nonexisting()
@@ -96,47 +100,44 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
     gpred.count_existing(vi)
 
     if not vi.title:
-        titleh1 = a_html.find('h1', class_='heading__title')
-        vi.title = str(titleh1.string) if titleh1 else ''
+        titleh1 = a_html.find('h1', class_='title_video')
+        vi.title = titleh1.text if titleh1 else ''
     if not vi.duration:
-        vi.duration = get_time_seconds(str(a_html.find('span', string='Duration:').next_sibling.next_sibling.string))
+        try:
+            vi.duration = get_time_seconds(str(a_html.find('div', class_='info row').find('span', string=re_time).text))
+        except Exception:
+            Log.error(f'Unable to extract duration for {sname}!')
+            vi.duration = 0
 
     Log.info(f'Scanning {sname}: {vi.fduration} \'{vi.title}\'')
 
     try:
-        views_to_votes_rate = 0.005  # 0.5%
-        views_count = int(a_html.find('span', string='Views:').parent.find('strong').string.replace(' ', ''))
-        rating = a_html.find(class_='progress').get('value')
-        rating_temp = int(rating)
-        rating_neg = rating_neg_temp = 100 - rating_temp
-        while not any(_ & 1 for _ in (rating_temp, rating_neg_temp)):
-            rating_temp //= 2
-            rating_neg_temp //= 2
-        votes_min = rating_temp + rating_neg_temp  # 1-100
-        votes = max(votes_min, int(views_count * views_to_votes_rate))
-        dislikes_int = int(votes * rating_neg // 100)
-        likes_int = votes - dislikes_int
+        rating, votes = tuple(a_html.find('span', class_='voters count').text.split(' ', 1))
+        votes = votes[1:-1].replace(',', '')
+        rating = rating.replace('%', '')
+        dislikes_int = int(votes) * (100 - (int(rating) or 100)) // 100
+        likes_int = int(votes) - dislikes_int
         score = f'{likes_int - dislikes_int:d}'
     except Exception:
         Log.warn(f'Warning: cannot extract score for {sname}.')
     try:
-        my_authors = [str(a.find('span').string).lower() for a in a_html.find('span', string='Artist:').parent.find_all('a')]
+        my_authors = [str(a.string).lower() for a in a_html.find('div', string='Artist').parent.find_all('span', class_='name')]
     except Exception:
         Log.warn(f'Warning: cannot extract authors for {sname}.')
         my_authors: list[str] = []
     try:
-        my_categories = [str(c.string).lower() for c in a_html.find('span', string='Categories:').parent.find_all('a')]
+        my_categories = [str(c.string).lower() for c in a_html.find('div', string='Categories').parent.find_all('span', class_=False)]
     except Exception:
         Log.warn(f'Warning: cannot extract categories for {sname}.')
         my_categories: list[str] = []
     try:
-        vi.uploader = str(a_html.find('span', string='Uploaded by:').parent.find('a').find('span').string).lower()
+        vi.uploader = str(a_html.find('div', string='Uploaded by').parent.find('a').get_text(strip=True)).lower()
     except Exception:
         Log.warn(f'Warning: cannot extract uploader for {sname}.')
-    tspan = a_html.find('span', string='Tags:')
-    if tspan is None:
+    tdiv = a_html.find('div', string='Tags')
+    if tdiv is None:
         Log.info(f'Warning: video {sname} has no tags!')
-    tags: list[str] = [str(elem.string) for elem in tspan.parent.find_all('a', attrs={'data-ajax': 'list'})] if tspan else []
+    tags: list[str] = [str(elem.string) for elem in tdiv.parent.find_all('a', class_='tag_item')] if tdiv else []
     tags_raw = [tag.replace(' ', '_').lower() for tag in tags]
     for calist in (my_categories, my_authors):
         for add_tag in [ca.replace(' ', '_') for ca in calist if ca]:
@@ -145,9 +146,9 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
     if Config.save_tags:
         vi.tags = ' '.join(sorted(tags_raw))
     if Config.save_descriptions or Config.save_comments or Config.check_description_pos or Config.check_description_neg:
-        cidivs = a_html.find('div', class_='comments__list').find_all('div', class_='post')
-        cudivs = [cidiv.find('strong') for cidiv in cidivs]
-        ctdivs = [cidiv.find('p') for cidiv in cidivs]
+        cidivs = a_html.find_all('div', class_='comment-info')
+        cudivs = [cidiv.find('a') for cidiv in cidivs]
+        ctdivs = [cidiv.find('div', class_='coment-text') for cidiv in cidivs]
         desc_em = a_html.find('em')  # exactly one
         my_uploader = vi.uploader or 'unknown'
         has_description = (cudivs[-1].text.lower() == my_uploader) if (cudivs and ctdivs) else False  # first comment by uploader
@@ -185,13 +186,13 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
         if matching_sq := scenario.get_matching_subquery(vi, tags_raw, score, rating):
             vi.subfolder = matching_sq.subfolder
             vi.quality = matching_sq.quality or vi.quality
-        elif utpalways_sq := scenario.get_utp_always_subquery() if tspan is None else None:
+        elif utpalways_sq := scenario.get_utp_always_subquery() if tdiv is None else None:
             vi.subfolder = utpalways_sq.subfolder
             vi.quality = utpalways_sq.quality or vi.quality
         else:
             Log.info(f'Info: unable to find matching or utp scenario subquery for {sname}, skipping...')
             return DownloadResult.FAIL_SKIPPED
-    elif tspan is None and len(Config.extra_tags) > 0 and Config.utp != DOWNLOAD_POLICY_ALWAYS:
+    elif tdiv is None and len(Config.extra_tags) > 0 and Config.utp != DOWNLOAD_POLICY_ALWAYS:
         Log.warn(f'Warning: could not extract tags from {sname}, skipping due to untagged videos download policy...')
         return DownloadResult.FAIL_SKIPPED
     if Config.duration and vi.duration and not (Config.duration.min <= vi.duration <= Config.duration.max):
@@ -204,7 +205,7 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
 
     tries = 0
     while True:
-        ddiv = a_html.find('span', string='Download:')
+        ddiv = a_html.find('div', string='Download')
         if ddiv is not None and ddiv.parent is not None:
             break
         if message_span := a_html.find('span', class_='message'):
@@ -215,10 +216,17 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
             return DownloadResult.FAIL_RETRIES
         tries += 1
         Log.debug(f'No download section for {sname}, retry #{tries:d}...')
-        a_html = await fetch_html(SITE_AJAX_REQUEST_VIDEO % vi.id)
-    links = ddiv.parent.find_all('a', attrs={'data-attach-session': 'PHPSESSID'})
-    download_tups = [tuple(lin.get_text(strip=True).replace('  ', ' ').split(' ', 2)) for lin in links if lin.text]
-    qualities = tuple(_[1] for _ in download_tups)
+        a_html = await fetch_html(f'{SITE_AJAX_REQUEST_VIDEO % vi.id}?popup_id={2 + tries + vi.id % 10:d}')
+    links = ddiv.parent.find_all('a', class_='tag_item')
+    qualities = tuple(lin.text.replace('MP4 ', '').strip() for lin in links if lin.text)
+    if vi.quality not in qualities:
+        q_idx = 0
+        Log.warn(f'Warning: cannot find quality \'{vi.quality}\' for {sname}, selecting \'{qualities[q_idx]}\'')
+        vi.quality = qualities[q_idx]
+        link_idx = q_idx
+    else:
+        link_idx = qualities.index(vi.quality)
+    vi.link = links[link_idx].get('href')
 
     if vi.quality not in qualities:
         q_idx = 0
@@ -231,9 +239,8 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
 
     prefix = PREFIX if has_naming_flag(NamingFlags.PREFIX) else ''
     fname_part2 = extract_ext(vi.link)
-    # my_score = (f'{"+" if score.isnumeric() else ""}{score}' if len(score) > 0
-    #             else '' if len(rating) > 0 else 'unk')
-    my_score = 'unk'
+    my_score = (f'{"+" if score.isnumeric() else ""}{score}' if len(score) > 0
+                else '' if len(rating) > 0 else 'unk')
     my_rating = (f'{", " if len(my_score) > 0 else ""}{rating}{"%" if rating.isnumeric() else ""}' if len(rating) > 0
                  else '' if len(my_score) > 0 else 'unk')
     fname_part1 = (

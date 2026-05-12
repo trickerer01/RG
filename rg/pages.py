@@ -24,7 +24,7 @@ from .fetch_html import create_session, fetch_html
 from .iinfo import VideoInfo
 from .logger import Log
 from .path_util import prefilter_existing_items
-from .rex import re_page_entry, re_preview_entry
+from .rex import re_page_entry, re_paginator, re_preview_entry
 from .util import get_time_seconds, has_naming_flag
 from .validators import find_and_resolve_config_conflicts
 from .version import APP_NAME
@@ -34,7 +34,7 @@ __all__ = ('process_pages',)
 
 async def process_pages() -> int:
     full_download = Config.quality != QUALITIES[-1]
-    video_attrs = {'data-ajax': 'video'}
+    video_ref_class = 'th' if Config.playlist_name else 'th js-open-popup'
 
     if find_and_resolve_config_conflicts(full_download) is True:
         await sleep(3.0)
@@ -64,7 +64,7 @@ async def process_pages() -> int:
                 (SITE_AJAX_REQUEST_UPLOADER_PAGE % (Config.uploader, pi)) if Config.uploader else
                 (SITE_AJAX_REQUEST_MODEL_PAGE % (Config.model, pi)) if Config.model else
                 (SITE_AJAX_REQUEST_SEARCH_PAGE % (Config.search_tags, Config.search_arts, Config.search_cats, Config.search,
-                                                  pi))
+                                                  Config.blacklist, Config.duration.min, Config.duration.max, pi))
             )
             a_html = await fetch_html(page_addr)
             if not a_html:
@@ -78,8 +78,11 @@ async def process_pages() -> int:
             pi += 1
 
             if maxpage == 0:
-                paginators = a_html.find_all('span', class_='pagination__text')
-                maxpage = max((maxpage, *(int(_.string) for _ in paginators if _.string.isnumeric())))
+                for page_ajax in a_html.find_all('a', attrs={'data-action': 'ajax'}):
+                    try:
+                        maxpage = max(maxpage, int(re_paginator.search(str(page_ajax.get('data-parameters'))).group(1)))
+                    except Exception:
+                        pass
                 if maxpage == 0:
                     Log.info('Could not extract max page, assuming single page search')
                     maxpage = 1
@@ -87,7 +90,7 @@ async def process_pages() -> int:
                     Log.debug(f'Extracted max page: {maxpage:d}')
 
             if Config.get_maxid:
-                mirefs = a_html.find_all('a', attrs=video_attrs)
+                mirefs = a_html.find_all('a', class_=video_ref_class)
                 max_id = max(int(re_page_entry.search(_.get('href')).group(1)) for _ in mirefs)
                 Log.fatal(f'{APP_NAME}: {max_id:d}')
                 return 0
@@ -95,9 +98,9 @@ async def process_pages() -> int:
             Log.info(f'page {pi - 1:d}...{" (this is the last page!)" if (0 < maxpage == pi - 1) else ""}')
 
             lower_count = 0
+            queued_ids = set()
             if full_download:
-                queued_ids = set()
-                arefs = a_html.find_all('a', attrs=video_attrs)
+                arefs = a_html.find_all('a', class_=video_ref_class)
                 orig_count = len(arefs)
                 for aref in arefs:
                     try:  # some post previews may be invalid
@@ -112,12 +115,9 @@ async def process_pages() -> int:
                         Log.warn(f'Warning: id {cur_id:d} already queued, skipping')
                         continue
                     queued_ids.add(cur_id)
-                    my_title = (str(aref.get('title')
-                                or (aref.find('img') or {'alt': ''}).get('alt')
-                                or aref.find('span', class_='card__title').string.strip()))
+                    my_title = str(aref.find('div', class_='thumb_title').text)
                     my_utitle = str(aref['href'][:-1][aref['href'][:-1].rfind('/') + 1:])
-                    my_duration_span = aref.find('span', class_='card__label--primary')
-                    my_duration = get_time_seconds(my_duration_span.string) if my_duration_span else 0
+                    my_duration = get_time_seconds(str(aref.find('div', class_='time').text))
                     use_utitle = has_naming_flag(NamingFlags.USE_URL_TITLE)
                     v_entries.append(VideoInfo(cur_id, my_utitle if use_utitle else my_title, m_duration=my_duration))
             else:
@@ -141,9 +141,10 @@ async def process_pages() -> int:
                         if bound_res < 0:
                             lower_count += 1
                         continue
-                    elif cur_id in v_entries:
+                    elif cur_id in queued_ids:
                         Log.warn(f'Warning: id {cur_id:d} already queued, skipping')
                         continue
+                    queued_ids.add(cur_id)
                     use_prefix = has_naming_flag(NamingFlags.PREFIX)
                     use_title = has_naming_flag(NamingFlags.TITLE)
                     use_utitle = has_naming_flag(NamingFlags.USE_URL_TITLE)

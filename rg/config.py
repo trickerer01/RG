@@ -117,7 +117,7 @@ class BaseConfig:
         self.search_rule_tag: str | None = None
         self.search_rule_art: str | None = None
         self.search_rule_cat: str | None = None
-        # self.blacklist: str | None = None
+        self.blacklist: str | None = None
         # self.blacklist_tags: str | None = None
         # self.blacklist_arts: str | None = None
         # self.blacklist_cats: str | None = None

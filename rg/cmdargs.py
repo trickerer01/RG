@@ -22,6 +22,7 @@ from .defs import (
     DOWNLOAD_POLICY_DEFAULT,
     HELP_ARG_ALL_PAGES,
     HELP_ARG_BEGIN_STOP_ID,
+    HELP_ARG_BLACKLIST,
     HELP_ARG_CHECK_TITLEDESC,
     HELP_ARG_CHECK_UPLOADER,
     HELP_ARG_CMDFILE,
@@ -94,6 +95,7 @@ from .logger import Log
 from .scenario import DownloadScenario
 from .tagger import (
     valid_artists,
+    valid_blacklist,
     valid_categories,
     valid_extra_tag,
     valid_playlist_id,
@@ -375,7 +377,7 @@ def parse_arglist(args: Sequence[str]) -> Namespace:
     pcpg1.add_argument('-search_rule_tag', default=SEARCH_RULE_DEFAULT, help='', choices=SEARCH_RULES)
     pcpg1.add_argument('-search_rule_art', default=SEARCH_RULE_DEFAULT, help='', choices=SEARCH_RULES)
     pcpg1.add_argument('-search_rule_cat', default=SEARCH_RULE_DEFAULT, help=HELP_ARG_SEARCH_RULE, choices=SEARCH_RULES)
-    # pcpg1.add_argument('-blacklist', metavar='#[(a|c|t):]name[,...]', default='', help=HELP_ARG_BLACKLIST, type=valid_blacklist)
+    pcpg1.add_argument('-blacklist', metavar='#[(a|c|t):]name[,...]', default='', help=HELP_ARG_BLACKLIST, type=valid_blacklist)
     # pcpg1.add_argument('-blacklist_tag', metavar='#tag[,tag...]', default='', help='', type=valid_tags)
     # pcpg1.add_argument('-blacklist_art', metavar='#artist[,artist...]', default='', help='', type=valid_tags)
     # pcpg1.add_argument('-blacklist_cat', metavar='#category[,category...]', default='', help=HELP_ARG_BLACKLIST, type=valid_tags)
