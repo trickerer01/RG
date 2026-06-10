@@ -4,7 +4,7 @@ build-backend = 'setuptools.build_meta'
 
 [project]
 name = 'RG'
-version = '1.8.179'
+version = '1.8.180'
 authors = [
     {name = 'trickerer01'},
 ]
