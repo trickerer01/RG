@@ -43,7 +43,7 @@ async def process_ids() -> int:
     if find_and_resolve_config_conflicts() is True:
         await sleep(3.0)
 
-    Config.id_sequence = list(itertools.filterfalse(lambda x: x < 0 or x > 200000, base_id_sequence))
+    Config.id_sequence = list(itertools.filterfalse(lambda x: not (0 < x < 2000000), base_id_sequence))
     if removed_count := base_id_sequence_len - len(Config.id_sequence):
         Log.warn(f'Removed {removed_count:d} known to be non-existent ids!')
 
