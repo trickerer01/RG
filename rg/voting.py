@@ -52,7 +52,7 @@ async def filter_act_by_votes_count(vi, sname, ars: MutableSequence[str], cas: M
         (ars, cas, tas),
         (get_artist_num, get_category_num, get_tag_num),
         (nameids_arts, nameids_cats, nameids_tags),
-        strict=False,
+        strict=True,
     ):
         for act in c:
             if act_id := m(act):
