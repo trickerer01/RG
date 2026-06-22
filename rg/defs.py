@@ -84,9 +84,9 @@ SITE_AJAX_REQUEST_MODEL_PAGE = base64.b64decode(
     'Rlb3Mmc29ydF9ieT0mZnJvbT0lZA==').decode()
 '''Params required: **artist_name**, **page** - **str**, **int**\n
 Ex. SITE_AJAX_REQUEST_MODEL_PAGE % ('gray', 1)'''
-SITE_AJAX_REQUEST_VIDEO_VOTING = (
-    'https://rule34video.com/tag_vote_state_public.php?video_id=%d&tag_ids=%s&category_ids=%s&model_ids=%s'
-)
+SITE_AJAX_REQUEST_VIDEO_VOTING = base64.b64decode(
+    'aHR0cHM6Ly9ydWxlMzRnZW4uY29tL3RhZ192b3RlX3N0YXRlX3B1YmxpYy5waHA/dmlkZW9faWQ9JWQmdGFnX2lkcz0lcyZjYXRlZ29yeV9pZHM9JXMmbW9kZWxfaWRzPSV'
+    'z').decode()
 '''Params required: **video_id**, **tags**, **categories**, **artists** - **int**, **str**, **str**, **str**\n
 Ex. SITE_AJAX_REQUEST_VIDEO_VOTING % (1071113, '1,2', '3,4,5', '6')'''
 
