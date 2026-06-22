@@ -90,9 +90,6 @@ SITE_AJAX_REQUEST_VIDEO_VOTING = (
 '''Params required: **video_id**, **tags**, **categories**, **artists** - **int**, **str**, **str**, **str**\n
 Ex. SITE_AJAX_REQUEST_VIDEO_VOTING % (1071113, '1,2', '3,4,5', '6')'''
 
-USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Goanna/6.7 Firefox/102.0 PaleMoon/33.3.1'
-DEFAULT_HEADERS = {'User-Agent': USER_AGENT}
-
 # untagged videos download policy
 DOWNLOAD_POLICY_NOFILTERS = 'nofilters'
 DOWNLOAD_POLICY_ALWAYS = 'always'
