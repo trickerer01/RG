@@ -36,9 +36,16 @@ from .dscanner import VideoScanWorker
 from .dthrottler import ThrottleChecker
 from .fetch_html import ensure_conn_closed, fetch_html, wrap_request
 from .idgaps import IdGapsPredictor
-from .iinfo import VideoInfo, export_video_info, get_min_max_ids
+from .iinfo import IIFlags, IIState, VideoInfo, export_video_info, get_min_max_ids
 from .logger import Log
-from .path_util import file_already_exists, is_file_being_used, register_new_file, try_rename, unregister_unfinished_file
+from .path_util import (
+    FileLock,
+    FileLockError,
+    file_already_exists,
+    register_new_file,
+    try_rename,
+    unregister_unfinished_file,
+)
 from .rex import re_media_filename, re_time
 from .tagger import filtered_tags, is_filtered_out_by_extra_tags, solve_tag_conflicts
 from .util import (
@@ -84,7 +91,7 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
         gpred.count_nonexisting()
         return DownloadResult.FAIL_NOT_FOUND
 
-    vi.set_state(VideoInfo.State.SCANNING)
+    vi.set_state(IIState.SCANNING)
     a_html = await fetch_html(SITE_AJAX_REQUEST_VIDEO % vi.id)
     if a_html is None:
         Log.error(f'Error: unable to retreive html for {sname}! Aborted!')
@@ -207,7 +214,7 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
     if Config.duration and vi.duration and not (Config.duration.min <= vi.duration <= Config.duration.max):
         Log.info(f'Info: video {sname} duration \'{vi.duration:d}\' is out of bounds ({Config.duration!s}), skipping...')
         return DownloadResult.FAIL_SKIPPED
-    if scn.find_vinfo_pred(lambda _: _.id == vi.id and VideoInfo.State.DOWNLOAD_PENDING <= _.state <= VideoInfo.State.DONE):
+    if scn.find_vinfo_pred(lambda _: _.id == vi.id and IIState.DOWNLOAD_PENDING <= _.state <= IIState.DONE):
         Log.info(f'{sname} was already processed, skipping...')
         return DownloadResult.FAIL_ALREADY_EXISTS
     my_tags = filtered_tags(sorted(tags_raw)) or my_tags
@@ -270,15 +277,15 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
     fname_mid = f'_{vi.quality}' if has_naming_flag(NamingFlags.QUALITY) else ''
     vi.filename = f'{fname_part1}{fname_mid}{fname_part2}'
 
-    vi.set_state(VideoInfo.State.SCANNED)
+    vi.set_state(IIState.SCANNED)
     return DownloadResult.SUCCESS
 
 
 async def process_video(vi: VideoInfo) -> DownloadResult:
-    vi.set_state(VideoInfo.State.DOWNLOAD_PENDING)
+    vi.set_state(IIState.DOWNLOAD_PENDING)
     res = await download_video(vi)
     if (1 << res) & DownloadResult.RESULT_MASK_CRITICAL:
-        vi.set_state(VideoInfo.State.FAILED)
+        vi.set_state(IIState.FAILED)
     return res
 
 
@@ -332,15 +339,14 @@ async def download_sceenshots(vi: VideoInfo) -> DownloadResult:
 
 
 async def download_video(vi: VideoInfo) -> DownloadResult:
-    exact_quality = False
     ret = DownloadResult.SUCCESS
     skip = Config.download_mode == DOWNLOAD_MODE_SKIP
 
     if skip is True:
-        vi.set_state(VideoInfo.State.DONE)
+        vi.set_state(IIState.DONE)
         ret = DownloadResult.FAIL_SKIPPED
     else:
-        vi.set_state(VideoInfo.State.DOWNLOADING)
+        vi.set_state(IIState.DOWNLOADING)
         curfile_match = re_media_filename.match(vi.filename)
         curfile_quality = Quality(curfile_match.group(2) or vi.quality)
         curfile = file_already_exists(vi.id, curfile_quality)
@@ -350,17 +356,14 @@ async def download_video(vi: VideoInfo) -> DownloadResult:
             curfile_oquality = Quality(curfile_omatch.group(2) or '')
             exact_name = curfile == vi.my_fullpath
             exact_quality = curfile_oquality and curfile_quality == curfile_oquality
-            vi.set_flag(VideoInfo.Flags.ALREADY_EXISTED_EXACT if exact_name else VideoInfo.Flags.ALREADY_EXISTED_SIMILAR)
+            vi.set_flag(IIFlags.ALREADY_EXISTED_EXACT if exact_name else IIFlags.ALREADY_EXISTED_SIMILAR)
             if Config.continue_mode and exact_quality:
-                if proc_str := is_file_being_used(curfile):
-                    Log.error(f'Error: file {vi.sffilename} already exists and is locked by \'{proc_str}\'!! Parallel download? Aborted!')
-                    return DownloadResult.FAIL_ALREADY_EXISTS
                 if not exact_name:
                     same_loc = os.path.isdir(vi.my_folder) and os.path.samefile(curfile_folder, vi.my_folder)
                     loc_str = f' ({"same" if same_loc else "different"} location)'
                     if Config.no_rename_move is False or same_loc:
                         Log.info(f'{vi.sffilename} {vi.quality} found{loc_str}. Enforcing new name (was \'{curfile}\').')
-                        if not try_rename(curfile, vi.my_fullpath):
+                        if not await try_rename(curfile, vi.my_fullpath):
                             Log.warn(f'Warning: unable to rename file to {vi.sffilename} (already exists?). Old name will be preserved!')
                             vi.filename = curfile_name
                     else:
@@ -368,130 +371,132 @@ async def download_video(vi: VideoInfo) -> DownloadResult:
                         Log.info(f'{vi.sffilename} {vi.quality} found{loc_str}. Enforcing old path + new name '
                                  f'\'{curfile_folder}/{vi.filename}\' due to \'--no-rename-move\' flag (was \'{curfile_name}\').')
                         vi.subfolder = new_subfolder
-                        if not try_rename(curfile, normalize_path(os.path.abspath(vi.my_fullpath), False)):
+                        if not await try_rename(curfile, normalize_path(os.path.abspath(vi.my_fullpath), False)):
                             Log.warn(f'Warning: unable to rename file to {vi.sffilename} (already exists?). Old name will be preserved!')
                             vi.filename = curfile_name
             else:
                 qstr = f'\'{curfile_oquality}\' {"==" if exact_quality else ">=" if curfile_oquality else "<?>"} \'{curfile_quality}\''
                 Log.info(f'{vi.sfsname} already exists ({qstr}). Skipped.\n Location: \'{curfile}\'')
                 vi.subfolder = normalize_path(os.path.relpath(curfile_folder, Config.dest_base))
-                vi.set_state(VideoInfo.State.DONE)
+                vi.set_state(IIState.DONE)
                 return DownloadResult.FAIL_ALREADY_EXISTS
-        if not os.path.isdir(vi.my_folder):
-            try:
-                os.makedirs(vi.my_folder)
-            except Exception:
-                Log.fatal(f'ERROR: Unable to create subfolder \'{vi.my_folder}\'!')
-                raise
+        try:
+            os.makedirs(vi.my_folder, exist_ok=True)
+        except Exception:
+            Log.fatal(f'ERROR: Unable to create subfolder \'{vi.my_folder}\'!')
+            raise
 
     dwn = VideoDownloadWorker.get()
     status_checker = ThrottleChecker(vi)
     try_num = 0
-    while (not skip) and try_num <= Config.retries:
-        r = None
+    while True:
         try:
-            file_exists = os.path.isfile(vi.my_fullpath)
-            if file_exists and try_num == 0:
-                vi.set_flag(VideoInfo.Flags.ALREADY_EXISTED_EXACT)
-            file_size = os.stat(vi.my_fullpath).st_size if file_exists else 0
+            async with FileLock(vi.my_fullpath):
+                while (not skip) and try_num <= Config.retries:
+                    r = None
+                    try:
+                        file_exists = os.path.isfile(vi.my_fullpath)
+                        if file_exists and try_num == 0:
+                            vi.set_flag(IIFlags.ALREADY_EXISTED_EXACT)
+                        file_size = os.stat(vi.my_fullpath).st_size if file_exists else 0
 
-            if Config.download_mode == DOWNLOAD_MODE_TOUCH:
-                if file_exists:
-                    Log.info(f'{vi.sfsname} ({vi.quality}) already exists, size: {file_size:d} ({file_size / Mem.MB:.2f} Mb)')
-                    vi.set_state(VideoInfo.State.DONE)
-                    return DownloadResult.FAIL_ALREADY_EXISTS
-                else:
-                    Log.info(f'Saving<touch> {vi.sdname} {0.0:.2f} Mb to {vi.sffilename}')
-                    with open(vi.my_fullpath, 'wb'):
-                        vi.set_flag(VideoInfo.Flags.FILE_WAS_CREATED)
-                        vi.set_state(VideoInfo.State.DONE)
-                break
+                        if Config.download_mode == DOWNLOAD_MODE_TOUCH:
+                            if file_exists:
+                                Log.info(f'{vi.sfsname} ({vi.quality}) already exists, size: {file_size:d} ({file_size / Mem.MB:.2f} Mb)')
+                                vi.set_state(IIState.DONE)
+                                return DownloadResult.FAIL_ALREADY_EXISTS
+                            else:
+                                Log.info(f'Saving<touch> {vi.sdname} {0.0:.2f} Mb to {vi.sffilename}')
+                                with open(vi.my_fullpath, 'wb'):
+                                    vi.set_flag(IIFlags.FILE_WAS_CREATED)
+                                    vi.set_state(IIState.DONE)
+                            break
 
-            hkwargs: dict[str, dict[str, str]] = {'headers': {'Range': f'bytes={file_size:d}-'} if file_size > 0 else {}}
-            ckwargs = {'allow_redirects': not (Config.proxy and (Config.download_without_proxy or Config.html_without_proxy))}
-            ckwargs.update({'noproxy': bool(Config.proxy and Config.html_without_proxy)})
-            # hkwargs['headers'].update({'Referer': SITE_AJAX_REQUEST_VIDEO % vi.id})
-            r = await wrap_request('GET', vi.link, **ckwargs, **hkwargs)
-            while r.status in (301, 302):
-                if urllib.parse.urlparse(r.headers['Location']).hostname != urllib.parse.urlparse(vi.link).hostname:
-                    ckwargs.update({'noproxy': Config.download_without_proxy, 'allow_redirects': True})
-                ensure_conn_closed(r)
-                r = await wrap_request('GET', r.headers['Location'], **ckwargs, **hkwargs)
-            content_len: int = r.content_length or 0
-            content_range_s = str(r.headers.get('Content-Range', '/')).split('/', 1)
-            content_range = int(content_range_s[1]) if len(content_range_s) > 1 and content_range_s[1].isnumeric() else 1
-            if (content_len == 0 or r.status == 416) and file_size >= content_range:
-                Log.warn(f'{vi.sfsname} ({vi.quality}) is already completed, size: {file_size:d} ({file_size / Mem.MB:.2f} Mb)')
-                vi.set_state(VideoInfo.State.DONE)
-                ret = DownloadResult.FAIL_ALREADY_EXISTS
-                break
-            if r.status == 404:
-                Log.error(f'Got 404 for {vi.sfsname}...!')
-                try_num = Config.retries
-                ret = DownloadResult.FAIL_NOT_FOUND
-            r.raise_for_status()
-            if r.content_type and 'text' in r.content_type:
-                raise FileNotFoundError(vi.link)
+                        hkwargs: dict[str, dict[str, str]] = {'headers': {'Range': f'bytes={file_size:d}-'} if file_size > 0 else {}}
+                        ckwargs = {'allow_redirects': not (Config.proxy and (Config.download_without_proxy or Config.html_without_proxy))}
+                        ckwargs.update({'noproxy': bool(Config.proxy and Config.html_without_proxy)})
+                        # hkwargs['headers'].update({'Referer': SITE_AJAX_REQUEST_VIDEO % vi.id})
+                        r = await wrap_request('GET', vi.link, **ckwargs, **hkwargs)
+                        while r.status in (301, 302):
+                            if urllib.parse.urlparse(r.headers['Location']).hostname != urllib.parse.urlparse(vi.link).hostname:
+                                ckwargs.update({'noproxy': Config.download_without_proxy, 'allow_redirects': True})
+                            ensure_conn_closed(r)
+                            r = await wrap_request('GET', r.headers['Location'], **ckwargs, **hkwargs)
+                        content_len: int = r.content_length or 0
+                        content_range_s = str(r.headers.get('Content-Range', '/')).split('/', 1)
+                        content_range = int(content_range_s[1]) if len(content_range_s) > 1 and content_range_s[1].isnumeric() else 1
+                        if (content_len == 0 or r.status == 416) and file_size >= content_range:
+                            size_str = f'{file_size:d} ({file_size / Mem.MB:.2f} Mb'
+                            Log.warn(f'{vi.sfsname} ({vi.quality}) is already completed, size: {size_str})')
+                            vi.set_state(IIState.DONE)
+                            ret = DownloadResult.FAIL_ALREADY_EXISTS
+                            break
+                        if r.status == 404:
+                            Log.error(f'Got 404 for {vi.sfsname}...!')
+                            try_num = Config.retries
+                            ret = DownloadResult.FAIL_NOT_FOUND
+                        r.raise_for_status()
+                        if r.content_type and 'text' in r.content_type:
+                            raise FileNotFoundError(vi.link)
 
-            status_checker.prepare(r, file_size)
-            vi.expected_size = file_size + content_len
-            vi.last_check_size = vi.start_size = file_size
-            vi.last_check_time = vi.start_time = get_elapsed_time_i()
-            starting_str = f' <continuing at {file_size:d}>' if file_size else ''
-            total_str = f' / {vi.expected_size / Mem.MB:.2f}' if file_size else ''
-            Log.info(f'Saving{starting_str} {vi.sdname} {content_len / Mem.MB:.2f}{total_str} Mb to {vi.sffilename}')
+                        status_checker.prepare(r, file_size)
+                        vi.expected_size = file_size + content_len
+                        vi.last_check_size = vi.start_size = file_size
+                        vi.last_check_time = vi.start_time = get_elapsed_time_i()
+                        starting_str = f' <continuing at {file_size:d}>' if file_size else ''
+                        total_str = f' / {vi.expected_size / Mem.MB:.2f}' if file_size else ''
+                        Log.info(f'Saving{starting_str} {vi.sdname} {content_len / Mem.MB:.2f}{total_str} Mb to {vi.sffilename}')
 
-            if Config.continue_mode and exact_quality:
-                if proc_str := is_file_being_used(vi.my_fullpath):
-                    Log.error(f'Error: file {vi.sffilename} already exists and is locked by \'{proc_str}\'!! Parallel download? Aborted!')
-                    return DownloadResult.FAIL_ALREADY_EXISTS
+                        await dwn.add_to_writes(vi)
+                        vi.set_state(IIState.WRITING)
+                        status_checker.run()
+                        async with async_open(vi.my_fullpath, 'ab') as outf:
+                            register_new_file(vi)
+                            vi.set_flag(IIFlags.FILE_WAS_CREATED)
+                            vi.dstart_time = vi.dstart_time or get_elapsed_time_i()
+                            bytes_written_this_try = 0
+                            async for chunk in r.content.iter_chunked(128 * Mem.KB):
+                                await outf.write(chunk)
+                                vi.bytes_written += len(chunk)
+                                bytes_written_this_try += len(chunk)
+                                if try_num > 0 and bytes_written_this_try >= 256 * Mem.KB:
+                                    try_num = 0
+                        status_checker.reset()
+                        await dwn.remove_from_writes(vi)
 
-            await dwn.add_to_writes(vi)
-            vi.set_state(VideoInfo.State.WRITING)
-            status_checker.run()
-            async with async_open(vi.my_fullpath, 'ab') as outf:
-                register_new_file(vi)
-                vi.set_flag(VideoInfo.Flags.FILE_WAS_CREATED)
-                vi.dstart_time = vi.dstart_time or get_elapsed_time_i()
-                bytes_written_this_try = 0
-                async for chunk in r.content.iter_chunked(128 * Mem.KB):
-                    await outf.write(chunk)
-                    vi.bytes_written += len(chunk)
-                    bytes_written_this_try += len(chunk)
-                    if try_num > 0 and bytes_written_this_try >= 256 * Mem.KB:
-                        try_num = 0
-            status_checker.reset()
-            await dwn.remove_from_writes(vi)
+                        file_size = os.stat(vi.my_fullpath).st_size
+                        if vi.expected_size and file_size != vi.expected_size:
+                            Log.error(f'Error: file size mismatch for {vi.sfsname}: {file_size:d} / {vi.expected_size:d}')
+                            raise OSError(vi.link)
 
-            file_size = os.stat(vi.my_fullpath).st_size
-            if vi.expected_size and file_size != vi.expected_size:
-                Log.error(f'Error: file size mismatch for {vi.sfsname}: {file_size:d} / {vi.expected_size:d}')
-                raise OSError(vi.link)
+                        total_time = (get_elapsed_time_i() - vi.dstart_time) or 1
+                        Log.info(f'[download] {vi.sfsname} ({vi.quality}) completed in {format_time(total_time)} '
+                                 f'({(vi.bytes_written / total_time) / Mem.KB:.1f} Kb/s)')
 
-            total_time = (get_elapsed_time_i() - vi.dstart_time) or 1
-            Log.info(f'[download] {vi.sfsname} ({vi.quality}) completed in {format_time(total_time)} '
-                     f'({(vi.bytes_written / total_time) / Mem.KB:.1f} Kb/s)')
-
-            vi.set_state(VideoInfo.State.DONE)
+                        vi.set_state(IIState.DONE)
+                        break
+                    except Exception as e:
+                        Log.error(f'{vi.sname}: {sys.exc_info()[0]}: {sys.exc_info()[1]}')
+                        if (r is None or r.status != 403) and not isinstance(e, (ClientPayloadError, ClientConnectorError)):
+                            try_num += 1
+                            Log.error(f'{vi.sffilename}: error #{try_num:d}...')
+                        ensure_conn_closed(r)
+                        # Network error may be thrown before item is added to active downloads
+                        await dwn.remove_from_writes(vi, True)
+                        status_checker.reset()
+                        if try_num <= Config.retries:
+                            vi.set_state(IIState.DOWNLOADING)
+                            await sleep(calc_sleep_time_retry(r))
+                        elif Config.keep_unfinished is False and os.path.isfile(vi.my_fullpath) and vi.has_flag(IIFlags.FILE_WAS_CREATED):
+                            Log.error(f'Failed to download {vi.sffilename}. Removing unfinished file...')
+                            unregister_unfinished_file(vi)
+                            os.remove(vi.my_fullpath)
+                    finally:
+                        ensure_conn_closed(r)
             break
-        except Exception as e:
-            Log.error(f'{vi.sname}: {sys.exc_info()[0]}: {sys.exc_info()[1]}')
-            if (r is None or r.status != 403) and not isinstance(e, (ClientPayloadError, ClientConnectorError)):
-                try_num += 1
-                Log.error(f'{vi.sffilename}: error #{try_num:d}...')
-            ensure_conn_closed(r)
-            # Network error may be thrown before item is added to active downloads
-            await dwn.remove_from_writes(vi, True)
-            status_checker.reset()
-            if try_num <= Config.retries:
-                vi.set_state(VideoInfo.State.DOWNLOADING)
-                await sleep(calc_sleep_time_retry(r))
-            elif Config.keep_unfinished is False and os.path.isfile(vi.my_fullpath) and vi.has_flag(VideoInfo.Flags.FILE_WAS_CREATED):
-                Log.error(f'Failed to download {vi.sffilename}. Removing unfinished file...')
-                unregister_unfinished_file(vi)
-                os.remove(vi.my_fullpath)
-        finally:
-            ensure_conn_closed(r)
+        except FileLockError:
+            Log.warn(f'Unable to acquire a lock on {vi.sffilename}! Waiting...')
+            await sleep(calc_sleep_time_retry(None) * 5)
 
     ret = (ret if ret in (DownloadResult.FAIL_NOT_FOUND, DownloadResult.FAIL_SKIPPED, DownloadResult.FAIL_ALREADY_EXISTS) else
            DownloadResult.SUCCESS if try_num <= Config.retries else
