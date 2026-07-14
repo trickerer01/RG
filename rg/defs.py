@@ -21,6 +21,7 @@ CONNECT_TIMEOUT_SOCKET_READ = 30
 CONNECT_REQUEST_DELAY = 0.7
 CONNECT_RETRY_DELAYS = {
     504: (20.0, 25.0),
+    429: (60.0, 60.0),
     403: (8.0, 10.0),
     0: (4.0, 8.0),
 }
@@ -48,8 +49,8 @@ PREFIX = 'rg_'
 SLASH = '/'
 UTF8 = 'utf-8'
 TAGS_CONCAT_CHAR = ','
-DEFAULT_EXT = 'mp4'
-EXTENSIONS_V = (DEFAULT_EXT, 'webm')
+EXTENSIONS_V = ('mp4', 'webm')
+DEFAULT_EXT = EXTENSIONS_V[0]
 HTTPS_PREFIX = 'https://'
 START_TIME = datetime.datetime.now()
 
