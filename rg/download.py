@@ -22,7 +22,7 @@ from .defs import (
     DOWNLOAD_POLICY_ALWAYS,
     FULLPATH_MAX_BASE_LEN,
     PREFIX,
-    SCAN_CANCEL_KEYSTROKE,
+    SCAN_CANCEL_KEY_SEQUENCE,
     SCREENSHOTS_COUNT,
     SITE,
     SITE_AJAX_REQUEST_VIDEO,
@@ -97,7 +97,7 @@ async def launch(sequence: list[VideoInfo], by_id: bool, reverse: bool, new_sess
 async def download(sequence: list[VideoInfo], by_id: bool, filtered_count: int) -> None:
     minid, maxid = get_min_max_ids(sequence)
     eta_min = calculate_eta(sequence)
-    interrupt_msg = f'\nPress \'{SCAN_CANCEL_KEYSTROKE}\' twice to stop' if by_id else ''
+    interrupt_msg = f'\nTap \'{SCAN_CANCEL_KEY_SEQUENCE}\' to stop' if by_id else ''
     Log.info(f'\nOk! {len(sequence):d} ids (+{filtered_count:d} filtered out), bound {minid:d} to {maxid:d}.'
              f' Working...{interrupt_msg}\n'
              f'\nThis will take at least {eta_min:d} seconds{f" ({format_time(eta_min)})" if eta_min >= 60 else ""}!\n')
