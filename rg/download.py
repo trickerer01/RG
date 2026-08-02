@@ -501,7 +501,7 @@ async def download_video(vi: VideoInfo) -> DownloadResult:
             content_len: int = r.content_length or 0
             content_range_s = str(r.headers.get('Content-Range', '/')).split('/', 1)
             content_range = int(content_range_s[1]) if len(content_range_s) > 1 and content_range_s[1].isnumeric() else 1
-            if (content_len == 0 or r.status == 416) and file_size >= content_range:
+            if (r.status == 416 or (content_len == 0 and r.status < 300)) and file_size >= content_range:
                 size_str = f'{file_size:d} ({file_size / Mem.MB:.2f} Mb)'
                 Log.warn(f'{vi.sfsname} ({vi.quality}) is already completed, size: {size_str}')
                 vi.set_state(IIState.DONE)
