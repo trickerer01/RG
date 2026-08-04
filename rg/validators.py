@@ -86,9 +86,14 @@ def find_and_resolve_config_conflicts(full_download=True) -> bool:
 
     delay_for_message = False
 
-    if Config.min_score:
-        Log.info('Info: minimum score is broken and may get removed in the future')
-        Config.min_score = None
+    if Config.proxy_kickin_threshold and not Config.proxy:
+        Log.info('Info: proxy kick-in threshold cannot be used without proxy, ignored')
+        Config.proxy_kickin_threshold = 0
+        delay_for_message = True
+
+    if Config.defer_proxy and not Config.proxy:
+        Log.info('Info: proxy defer flag cannot be used without proxy, ignored')
+        Config.defer_proxy = False
         delay_for_message = True
 
     if Config.defer_proxy:
