@@ -59,7 +59,7 @@ from .input import (
 )
 from .logger import Log
 from .path_util import FileLock, FileLockError, try_rename
-from .rex import re_media_filename, re_time
+from .rex import re_media_filename
 from .tagger import filtered_tags, is_filtered_out_by_extra_tags, solve_tag_conflicts
 from .util import (
     calc_sleep_time_retry,
@@ -137,34 +137,37 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
     scn = VideoScanWorker.get()
     gpred = IdGapsPredictor.get()
     scenario = Config.scenario
-    sname = vi.sname
     extra_ids: list[int] = scn.get_extra_ids() if scn else []
     my_tags = 'no_tags'
     rating = vi.rating
     score = ''
 
     if predicted_prefix := gpred.need_skip(vi):
-        Log.warn(f'Id gap prediction {predicted_prefix} forces error 404 for {sname}, skipping...')
+        Log.warn(f'Id gap prediction {predicted_prefix} forces error 404 for {vi.sname}, skipping...')
         gpred.count_nonexisting()
         return DownloadResult.FAIL_NOT_FOUND
+
+    if scn.find_vinfo_pred(lambda _: _.id == vi.id and IIState.DOWNLOAD_PENDING <= _.state <= IIState.DONE):
+        Log.info(f'{vi.sname} was already processed, skipping...')
+        return DownloadResult.FAIL_ALREADY_EXISTS
 
     vi.set_state(IIState.SCANNING)
     a_html = await fetch_html(SITE_AJAX_REQUEST_VIDEO % vi.id)
     if a_html is None:
-        Log.error(f'Error: unable to retreive html for {sname}! Aborted!')
+        Log.error(f'Error: unable to retreive html for {vi.sname}! Aborted!')
         gpred.count_nonexisting()
         return DownloadResult.FAIL_SKIPPED if Config.aborted_scan else DownloadResult.FAIL_RETRIES
 
     if not len(a_html):
-        Log.error(f'Got empty HTML page for {sname}! Rescanning...')
+        Log.error(f'Got empty HTML page for {vi.sname}! Rescanning...')
         return DownloadResult.FAIL_EMPTY_HTML
 
     if a_html.find('title', string=lambda x: 'Maintenance' in x):
-        Log.error(f'Got maintenance page for {sname}! Rescanning...')
+        Log.error(f'Got maintenance page for {vi.sname}! Rescanning...')
         return DownloadResult.FAIL_EMPTY_HTML
 
     if a_html.find('title', string='404 Not Found') or a_html.find('title', string='Page not Found'):
-        Log.error(f'Got error 404 for {sname}, skipping...')
+        Log.error(f'Got error 404 for {vi.sname}, skipping...')
         gpred.count_nonexisting()
         return DownloadResult.FAIL_NOT_FOUND
 
@@ -175,43 +178,45 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
         vi.title = titleh1.text if titleh1 else ''
     if not vi.duration:
         try:
-            vi.duration = get_time_seconds(str(a_html.find('div', class_='info row').find('span', string=re_time).text))
+            vi.duration = get_time_seconds(a_html.find('div', class_='vp-meta').find(class_='custom-time').parent.text)
         except Exception:
-            Log.error(f'Unable to extract duration for {sname}!')
+            Log.error(f'Unable to extract duration for {vi.sname}!')
             vi.duration = 0
 
-    Log.info(f'Scanning {sname}: {vi.fduration} \'{vi.title}\'')
+    Log.info(f'Scanning {vi.sname}: {vi.fduration} \'{vi.title}\'')
 
     try:
-        rating, votes = tuple(a_html.find('span', class_='voters count').text.split(' ', 1))
+        rating, votes = tuple(a_html.find('div', class_='vp-voters').text.split(' ', 1))
         votes = votes[1:-1].replace(',', '')
         rating = rating.replace('%', '')
         dislikes_int = int(votes) * (100 - (int(rating) or 100)) // 100
         likes_int = int(votes) - dislikes_int
         score = f'{likes_int - dislikes_int:d}'
     except Exception:
-        Log.warn(f'Warning: cannot extract score for {sname}.')
+        Log.warn(f'Warning: cannot extract score for {vi.sname}.')
     try:
         arts = [str(a.string).lower() for a in a_html.find('div', string='Artist').parent.find_all('span', class_='name')]
     except Exception:
-        Log.warn(f'Warning: cannot extract authors for {sname}.')
+        Log.warn(f'Warning: cannot extract authors for {vi.sname}.')
         arts: list[str] = []
     try:
         cats = [str(c.string).lower() for c in a_html.find('div', string='Categories').parent.find_all('span', class_=False)]
     except Exception:
-        Log.warn(f'Warning: cannot extract categories for {sname}.')
+        Log.warn(f'Warning: cannot extract categories for {vi.sname}.')
         cats: list[str] = []
     try:
         vi.uploader = str(a_html.find('div', string='Uploaded by').parent.find('a').get_text(strip=True)).lower()
     except Exception:
-        Log.warn(f'Warning: cannot extract uploader for {sname}.')
+        Log.warn(f'Warning: cannot extract uploader for {vi.sname}.')
     tdiv = a_html.find('div', string='Tags')
     if tdiv is None:
-        Log.info(f'Warning: video {sname} has no tags!')
-    tags: list[str] = [str(elem.string) for elem in tdiv.parent.find_all('a', class_='tag_item')] if tdiv else []
+        Log.info(f'Warning: video {vi.sname} has no tags!')
+    tags: list[str] = [str(elem.string) for elem in tdiv.parent.find_all('a', class_='tag_item', href=lambda x: x != '#')] if tdiv else []
+    cdiv = a_html.find('div', string='Characters')
+    tags.extend([str(elem.string) for elem in cdiv.parent.find_all('a', class_='tag_item', href=lambda x: x != '#')] if cdiv else [])
     arts_raw, cats_raw, tags_raw = tuple([_.replace(' ', '_').lower() for _ in actlist] for actlist in (arts, cats, tags))
     if Config.check_votes:
-        await filter_act_by_votes_count(vi, sname, arts_raw, cats_raw, tags_raw)
+        await filter_act_by_votes_count(vi, arts_raw, cats_raw, tags_raw)
     for calist in (cats_raw, arts_raw):
         for add_tag in [ca for ca in calist if ca]:
             if add_tag not in tags_raw:
@@ -239,19 +244,19 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
     va_list = [va for va in arts_raw if any(_ in va for _ in ('audio', '(va)')) or va.endswith('va')]
     aucat_count = max(len(arts_raw) - len(va_list), len(cats_raw))
     if aucat_count >= 6 and not any(_ in tags_raw for _ in ('compilation', 'pmv')):
-        Log.warn(f'{sname} has {len(arts_raw):d} arts ({len(va_list):d} VA) and {len(cats_raw):d} cats! Assuming compilation')
+        Log.warn(f'{vi.sname} has {len(arts_raw):d} arts ({len(va_list):d} VA) and {len(cats_raw):d} cats! Assuming compilation')
         tags_raw.append('compilation')
     if Config.solve_tag_conflicts:
         solve_tag_conflicts(vi, tags_raw)
-    Log.debug(f'{sname} tags: \'{",".join(tags_raw)}\'')
+    Log.debug(f'{vi.sname} tags: \'{",".join(tags_raw)}\'')
     if is_filtered_out_by_extra_tags(vi, tags_raw, Config.extra_tags, Config.id_sequence, vi.subfolder, extra_ids):
-        Log.info(f'Info: video {sname} is filtered out by{" outer" if scenario else ""} extra tags, skipping...')
+        Log.info(f'Info: video {vi.sname} is filtered out by{" outer" if scenario else ""} extra tags, skipping...')
         return DownloadResult.FAIL_FILTERED_OUTER if scenario else DownloadResult.FAIL_SKIPPED
     for vsrs, csri, srn, pc in zip((score, rating), (Config.min_score, Config.min_rating), ('score', 'rating'), ('', '%'), strict=True):
         if len(vsrs) > 0 and csri is not None:
             try:
                 if int(vsrs) < csri:
-                    Log.info(f'Info: video {sname} has low {srn} \'{vsrs}{pc}\' (required {csri:d}), skipping...')
+                    Log.info(f'Info: video {vi.sname} has low {srn} \'{vsrs}{pc}\' (required {csri:d}), skipping...')
                     return DownloadResult.FAIL_SKIPPED
             except Exception:
                 pass
@@ -263,47 +268,35 @@ async def scan_video(vi: VideoInfo) -> DownloadResult:
             vi.subfolder = utpalways_sq.subfolder
             vi.quality = utpalways_sq.quality or vi.quality
         else:
-            Log.info(f'Info: unable to find matching or utp scenario subquery for {sname}, skipping...')
+            Log.info(f'Info: unable to find matching or utp scenario subquery for {vi.sname}, skipping...')
             return DownloadResult.FAIL_SKIPPED
     elif tdiv is None and len(Config.extra_tags) > 0 and Config.utp != DOWNLOAD_POLICY_ALWAYS:
-        Log.warn(f'Warning: could not extract tags from {sname}, skipping due to untagged videos download policy...')
+        Log.warn(f'Warning: could not extract tags from {vi.sname}, skipping due to untagged videos download policy...')
         return DownloadResult.FAIL_SKIPPED
     if Config.duration and vi.duration and not (Config.duration.min <= vi.duration <= Config.duration.max):
-        Log.info(f'Info: video {sname} duration \'{vi.duration:d}\' is out of bounds ({Config.duration!s}), skipping...')
+        Log.info(f'Info: video {vi.sname} duration \'{vi.duration:d}\' is out of bounds ({Config.duration!s}), skipping...')
         return DownloadResult.FAIL_SKIPPED
-    if scn.find_vinfo_pred(lambda _: _.id == vi.id and IIState.DOWNLOAD_PENDING <= _.state <= IIState.DONE):
-        Log.info(f'{sname} was already processed, skipping...')
-        return DownloadResult.FAIL_ALREADY_EXISTS
     my_tags = filtered_tags(sorted(tags_raw)) or my_tags
 
     tries = 0
     while True:
-        ddiv = a_html.find('div', string='Download')
+        ddiv = a_html.find('div', attrs={'class': 'vp-sheet', 'data-sheet': 'download'})
         if ddiv is not None and ddiv.parent is not None:
             break
         if message_span := a_html.find('span', class_='message'):
-            Log.warn(f'Cannot find download section for {sname}, reason: \'{message_span.text}\', skipping...')
+            Log.warn(f'Cannot find download section for {vi.sname}, reason: \'{message_span.text}\', skipping...')
             return DownloadResult.FAIL_DELETED
         elif tries >= 5:
-            Log.error(f'Cannot find download section for {sname} after {tries:d} tries, failed!')
+            Log.error(f'Cannot find download section for {vi.sname} after {tries:d} tries, failed!')
             return DownloadResult.FAIL_RETRIES
         tries += 1
-        Log.debug(f'No download section for {sname}, retry #{tries:d}...')
+        Log.debug(f'No download section for {vi.sname}, retry #{tries:d}...')
         a_html = await fetch_html(f'{SITE_AJAX_REQUEST_VIDEO % vi.id}?popup_id={2 + tries + vi.id % 10:d}')
     links = ddiv.parent.find_all('a', class_='tag_item')
-    qualities = tuple(lin.text.replace('MP4 ', '').strip() for lin in links if lin.text)
+    qualities = tuple(lin.text[:lin.text.rfind('p') + 1].replace('MP4 ', '').strip() for lin in links if lin.text)
     if vi.quality not in qualities:
         q_idx = 0
-        Log.warn(f'Warning: cannot find quality \'{vi.quality}\' for {sname}, selecting \'{qualities[q_idx]}\'')
-        vi.quality = qualities[q_idx]
-        link_idx = q_idx
-    else:
-        link_idx = qualities.index(vi.quality)
-    vi.link = links[link_idx].get('href')
-
-    if vi.quality not in qualities:
-        q_idx = 0
-        Log.warn(f'Warning: cannot find quality \'{vi.quality}\' for {sname}, selecting \'{qualities[q_idx]}\'')
+        Log.warn(f'Warning: cannot find quality \'{vi.quality}\' for {vi.sname}, selecting \'{qualities[q_idx]}\'')
         vi.quality = qualities[q_idx]
         link_idx = q_idx
     else:

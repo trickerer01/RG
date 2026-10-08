@@ -15,7 +15,8 @@ re_media_filename = re.compile(fr'^(?:{PREFIX})?(\d+).*?(?:_({"|".join(QUALITIES
 re_infolist_filename = re.compile(fr'{PREFIX}!(?:tag|description|comment)s_\d+-\d+\.txt')
 re_replace_symbols = re.compile(r'[^0-9a-zA-Z.,_+%!\-()\[\] ]+')
 re_ext = re.compile(r'(\.[^&]{3,5})&')
-re_time = re.compile(r'\d+(?::\d+){1,2}')
+# re_time = re.compile(r'\d+(?::\d+){1,2}')
+# re_quality = re.compile(r'\d{3,4}p')
 # re_private_video = re_compile(r'^This is a private video\..*?$')
 # pages
 re_page_entry = re.compile(r'video/(\d+)/')
